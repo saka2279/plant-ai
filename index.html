@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="複数センサーの一致度と根拠からカポックの状態を考えるPlant AI v0.1.0デモ">
-    <title>Plant AI v0.1.0 | カポック・デジタルツイン</title>
+    <meta name="description" content="複数センサーの一致度と根拠からカポックの状態を考えるPlant AI v0.1.1デモ">
+    <title>Plant AI v0.1.1 | カポック・デジタルツイン</title>
     <link rel="icon" href="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=">
     <link rel="stylesheet" href="style.css">
     <script src="logic.js" defer></script>
@@ -20,7 +20,7 @@
         </a>
         <div class="header-meta">
           <span class="connection-pill"><i aria-hidden="true"></i>デモ接続中</span>
-          <span class="version-badge">v0.1.0</span>
+          <span class="version-badge">v0.1.1</span>
         </div>
       </header>
 
@@ -37,6 +37,11 @@
           </div>
         </section>
 
+        <aside class="concept-banner" aria-label="現在の開発段階">
+          <strong>現在はコンセプトデモです</strong>
+          <p>確からしさはセンサー情報の整合性を表します。個体別学習は、今後カポックの実測データを用いて実装する予定です。</p>
+        </aside>
+
         <section class="decision-panel decision-good" id="decision-panel" aria-labelledby="decision-title" aria-live="polite">
           <div class="decision-topline">
             <p class="section-number">TODAY'S READING</p>
@@ -52,7 +57,7 @@
               <span>判断の確からしさ</span>
               <strong id="certainty-label">高い</strong>
               <div class="certainty-meter" id="certainty-meter" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-              <small>センサーの一致度を示す目安</small>
+              <small>予測精度ではなく、センサー情報の整合性を示す目安です。</small>
             </div>
           </div>
           <div class="event-notice" id="event-notice" hidden></div>
@@ -115,16 +120,16 @@
               <p class="demo-intro">実機がなくても、判断が変わる4つの場面を再現できます。</p>
               <div class="scenario-list">
                 <button class="scenario-button" type="button" data-scenario="surfaceDry">
-                  <span><strong>表面だけ乾燥</strong><small>表層18%・根元58%</small></span><i aria-hidden="true">→</i>
+                  <span><strong>表面だけ乾燥</strong><small>表層18%・根元58%</small><em>深さによって値が違うため、判断を保留する場面です。</em></span><i aria-hidden="true">→</i>
                 </button>
                 <button class="scenario-button" type="button" data-scenario="allDry">
-                  <span><strong>全体が乾燥</strong><small>両方低く、重量も減少</small></span><i aria-hidden="true">→</i>
+                  <span><strong>全体が乾燥</strong><small>両方低く、重量も減少</small><em>3つの変化が同じ方向を示す場面です。</em></span><i aria-hidden="true">→</i>
                 </button>
                 <button class="scenario-button" type="button" data-scenario="sensorMismatch">
-                  <span><strong>センサー不一致</strong><small>水分値だけが急変</small></span><i aria-hidden="true">→</i>
+                  <span><strong>センサー不一致</strong><small>水分値だけが急変</small><em>重量が変わらず、センサー確認を促す場面です。</em></span><i aria-hidden="true">→</i>
                 </button>
                 <button class="scenario-button scenario-water" type="button" data-scenario="watering">
-                  <span><strong>水やり変化</strong><small>水分と鉢重量が上昇</small></span><i aria-hidden="true">→</i>
+                  <span><strong>水やり変化</strong><small>水分と鉢重量が上昇</small><em>複数の上昇から水やり後の変化を再現します。</em></span><i aria-hidden="true">→</i>
                 </button>
               </div>
               <button class="secondary-button" id="random-demo-button" type="button">ランダムなデモ値を生成</button>
@@ -135,7 +140,7 @@
         <section class="panel history-panel" aria-labelledby="history-title">
           <div class="section-heading history-heading">
             <div><p class="section-number">04 / SNAPSHOT</p><h2 id="history-title">観察スナップショット</h2></div>
-            <div class="history-actions"><button class="primary-button" id="save-button" type="button">現在の状態を記録</button><button class="text-button danger-button" id="clear-button" type="button">履歴を削除</button></div>
+            <div class="history-actions"><button class="primary-button" id="save-button" type="button">現在の状態を記録</button><button class="secondary-button export-button" id="export-button" type="button">CSVを書き出す</button><button class="text-button danger-button" id="clear-button" type="button">履歴を削除</button></div>
           </div>
           <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
           <div class="history-list" id="history-list"></div>
@@ -148,7 +153,7 @@
         </section>
       </main>
 
-      <footer><p>Plant AI <span>v0.1.0</span></p><p>判断を代わるのではなく、判断材料を増やす。</p></footer>
+      <footer><p>Plant AI <span>v0.1.1</span></p><p>判断を代わるのではなく、判断材料を増やす。</p></footer>
     </div>
   </body>
 </html>

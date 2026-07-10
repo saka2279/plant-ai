@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const APP_VERSION = "v0.1.0";
+  const APP_VERSION = "v0.1.1";
   const STORAGE_KEY = "plant-ai-digital-twin-v0.1.0";
   const LEGACY_STORAGE_KEY = "plant-ai-measurements-v0.1.0";
   const MAX_HISTORY_ITEMS = 30;
@@ -28,6 +28,7 @@
     randomDemoButton: document.querySelector("#random-demo-button"),
     scenarioButtons: Array.from(document.querySelectorAll("[data-scenario]")),
     saveButton: document.querySelector("#save-button"),
+    exportButton: document.querySelector("#export-button"),
     clearButton: document.querySelector("#clear-button"),
     historyList: document.querySelector("#history-list"),
     emptyHistory: document.querySelector("#empty-history"),
@@ -230,11 +231,68 @@
       values.textContent = `表層 ${snapshot.reading.surface}% ／ 根元 ${snapshot.reading.root}% ／ 重量 ${PlantAILogic.formatSigned(snapshot.reading.weightChange)}g`;
       const meta = document.createElement("small");
       meta.textContent = `${snapshot.agreement}・確からしさ ${snapshot.certainty}`;
-      card.append(time, title, values, meta);
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "snapshot-delete";
+      deleteButton.textContent = "この記録を削除";
+      deleteButton.setAttribute("aria-label", `${formatDate(snapshot.recordedAt)}の観察記録を削除`);
+      deleteButton.addEventListener("click", () => deleteSnapshot(snapshot.id));
+      card.append(time, title, values, meta, deleteButton);
       elements.historyList.append(card);
     });
     elements.emptyHistory.hidden = history.length > 0;
     elements.clearButton.disabled = history.length === 0;
+    elements.exportButton.disabled = history.length === 0;
+  }
+
+  function deleteSnapshot(id) {
+    const nextHistory = history.filter((snapshot) => snapshot.id !== id);
+    if (nextHistory.length === history.length) return;
+    history = nextHistory;
+    if (persistHistory()) {
+      renderHistory();
+      showFeedback("選択した観察記録を削除しました。");
+    }
+  }
+
+  function escapeCsvValue(value) {
+    return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  }
+
+  function buildHistoryCsv() {
+    const headers = ["ID", "測定日時", "シナリオ", "表層水分(%)", "根元水分(%)", "鉢重量変化(g)", "温度(℃)", "湿度(%)", "状態", "センサー整合性", "確からしさ", "記録バージョン"];
+    const rows = history.map((snapshot) => [
+      snapshot.id,
+      snapshot.recordedAt,
+      snapshot.scenario,
+      snapshot.reading.surface,
+      snapshot.reading.root,
+      snapshot.reading.weightChange,
+      snapshot.reading.temperature,
+      snapshot.reading.humidity,
+      snapshot.state,
+      snapshot.agreement,
+      snapshot.certainty,
+      snapshot.version || "v0.1.0"
+    ]);
+    return [headers, ...rows].map((row) => row.map(escapeCsvValue).join(",")).join("\r\n");
+  }
+
+  function exportHistoryCsv() {
+    if (history.length === 0) return;
+    const csv = `\uFEFF${buildHistoryCsv()}`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "plant-ai-snapshots-v0.1.1.csv";
+    document.body.append(link);
+    link.click();
+    window.setTimeout(() => {
+      link.remove();
+      URL.revokeObjectURL(url);
+    }, 1000);
+    showFeedback(`${history.length}件の観察記録をCSVへ書き出しました。`);
   }
 
   function clearHistory() {
@@ -282,7 +340,11 @@
   elements.scenarioButtons.forEach((button) => button.addEventListener("click", () => applyScenario(button.dataset.scenario)));
   elements.randomDemoButton.addEventListener("click", applyRandomDemo);
   elements.saveButton.addEventListener("click", saveSnapshot);
+  elements.exportButton.addEventListener("click", exportHistoryCsv);
   elements.clearButton.addEventListener("click", clearHistory);
+
+  // CSV生成結果を変更せず確認するための読み取り専用インターフェースです。
+  globalThis.PlantAIApp = Object.freeze({ getHistoryCsv: buildHistoryCsv, getHistoryCount: () => history.length });
 
   const initial = adapter.getInitialReading();
   previousReading = initial.previous;
