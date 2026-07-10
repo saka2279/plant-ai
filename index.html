@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="複数センサーの一致度と根拠からカポックの状態を考えるPlant AI v0.1.0デモ">
+    <title>Plant AI v0.1.0 | カポック・デジタルツイン</title>
+    <link rel="icon" href="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=">
+    <link rel="stylesheet" href="style.css">
+    <script src="logic.js" defer></script>
+    <script src="sensor-adapters.js" defer></script>
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand" href="#top" aria-label="Plant AI ホーム">
+          <span class="brand-mark" aria-hidden="true"><span></span></span>
+          <span>Plant AI</span>
+        </a>
+        <div class="header-meta">
+          <span class="connection-pill"><i aria-hidden="true"></i>デモ接続中</span>
+          <span class="version-badge">v0.1.0</span>
+        </div>
+      </header>
+
+      <main id="top">
+        <section class="hero" aria-labelledby="page-title">
+          <div>
+            <p class="eyebrow">KAPOK DIGITAL TWIN</p>
+            <h1 id="page-title">複数の変化から、<br><em>急がず考える。</em></h1>
+            <p class="hero-description">表面だけを見て決めず、根元の水分や鉢の重さも照らし合わせる、カポックのデジタルツイン・デモです。</p>
+          </div>
+          <div class="plant-identity" aria-label="観察対象 カポック">
+            <span class="plant-illustration" aria-hidden="true"><i></i><b></b></span>
+            <span><small>観察対象</small><strong>カポック</strong><em>デモ個体 01</em></span>
+          </div>
+        </section>
+
+        <section class="decision-panel decision-good" id="decision-panel" aria-labelledby="decision-title" aria-live="polite">
+          <div class="decision-topline">
+            <p class="section-number">TODAY'S READING</p>
+            <span class="agreement-badge" id="agreement-badge">センサー一致</span>
+          </div>
+          <div class="decision-main">
+            <div>
+              <p class="decision-kicker">現在の状態の目安</p>
+              <h2 id="decision-title">水分あり</h2>
+              <p class="decision-summary" id="decision-summary">表層と根元の値が近く、鉢重量にも大きな変化はありません。</p>
+            </div>
+            <div class="certainty-box">
+              <span>判断の確からしさ</span>
+              <strong id="certainty-label">高い</strong>
+              <div class="certainty-meter" id="certainty-meter" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+              <small>センサーの一致度を示す目安</small>
+            </div>
+          </div>
+          <div class="event-notice" id="event-notice" hidden></div>
+        </section>
+
+        <div class="main-grid">
+          <section class="panel sensors-panel" aria-labelledby="sensors-title">
+            <div class="section-heading">
+              <div>
+                <p class="section-number">01 / SENSOR INPUT</p>
+                <h2 id="sensors-title">センサー値</h2>
+              </div>
+              <span class="manual-label">手入力できます</span>
+            </div>
+
+            <div class="sensor-grid">
+              <article class="sensor-card sensor-moisture">
+                <div class="sensor-card-head"><span class="sensor-icon icon-surface" aria-hidden="true"></span><div><small>土の表面付近</small><h3>表層水分</h3></div></div>
+                <div class="sensor-value"><output id="surface-output" for="surface-range surface-number">46</output><span>%</span></div>
+                <input id="surface-range" data-sensor="surface" type="range" min="0" max="100" step="1" value="46" aria-label="表層水分スライダー">
+                <label class="compact-input" for="surface-number"><span>数値</span><span><input id="surface-number" data-sensor="surface" type="number" min="0" max="100" step="1" value="46" inputmode="numeric"><i>%</i></span></label>
+              </article>
+
+              <article class="sensor-card sensor-moisture">
+                <div class="sensor-card-head"><span class="sensor-icon icon-root" aria-hidden="true"></span><div><small>根に近い位置</small><h3>根元水分</h3></div></div>
+                <div class="sensor-value"><output id="root-output" for="root-range root-number">52</output><span>%</span></div>
+                <input id="root-range" data-sensor="root" type="range" min="0" max="100" step="1" value="52" aria-label="根元水分スライダー">
+                <label class="compact-input" for="root-number"><span>数値</span><span><input id="root-number" data-sensor="root" type="number" min="0" max="100" step="1" value="52" inputmode="numeric"><i>%</i></span></label>
+              </article>
+
+              <article class="sensor-card">
+                <div class="sensor-card-head"><span class="sensor-icon icon-weight" aria-hidden="true"></span><div><small>直近6時間</small><h3>鉢重量変化</h3></div></div>
+                <label class="large-input" for="weight-input"><input id="weight-input" data-sensor="weightChange" type="number" min="-500" max="500" step="1" value="-8" inputmode="decimal"><span>g</span></label>
+                <p class="sensor-help">マイナスは軽く、プラスは重くなった目安です。</p>
+              </article>
+
+              <article class="sensor-card compact-card">
+                <div class="sensor-card-head"><span class="sensor-icon icon-temperature" aria-hidden="true"></span><div><small>室内環境</small><h3>温度</h3></div></div>
+                <label class="large-input" for="temperature-input"><input id="temperature-input" data-sensor="temperature" type="number" min="0" max="50" step="0.1" value="24.2" inputmode="decimal"><span>℃</span></label>
+              </article>
+
+              <article class="sensor-card compact-card">
+                <div class="sensor-card-head"><span class="sensor-icon icon-humidity" aria-hidden="true"></span><div><small>室内環境</small><h3>湿度</h3></div></div>
+                <label class="large-input" for="humidity-input"><input id="humidity-input" data-sensor="humidity" type="number" min="0" max="100" step="1" value="58" inputmode="numeric"><span>%</span></label>
+              </article>
+            </div>
+          </section>
+
+          <aside class="side-stack">
+            <section class="panel reasons-panel" aria-labelledby="reasons-title">
+              <p class="section-number">02 / WHY</p>
+              <h2 id="reasons-title">この判断の根拠</h2>
+              <ol class="reason-list" id="reason-list"></ol>
+              <p class="accuracy-note">「確からしさ」は複数センサーのそろい具合を表す表示で、植物状態の科学的な予測精度ではありません。</p>
+            </section>
+
+            <section class="panel demo-panel" aria-labelledby="demo-title">
+              <p class="section-number">03 / JUDGE DEMO</p>
+              <h2 id="demo-title">審査用デモ</h2>
+              <p class="demo-intro">実機がなくても、判断が変わる4つの場面を再現できます。</p>
+              <div class="scenario-list">
+                <button class="scenario-button" type="button" data-scenario="surfaceDry">
+                  <span><strong>表面だけ乾燥</strong><small>表層18%・根元58%</small></span><i aria-hidden="true">→</i>
+                </button>
+                <button class="scenario-button" type="button" data-scenario="allDry">
+                  <span><strong>全体が乾燥</strong><small>両方低く、重量も減少</small></span><i aria-hidden="true">→</i>
+                </button>
+                <button class="scenario-button" type="button" data-scenario="sensorMismatch">
+                  <span><strong>センサー不一致</strong><small>水分値だけが急変</small></span><i aria-hidden="true">→</i>
+                </button>
+                <button class="scenario-button scenario-water" type="button" data-scenario="watering">
+                  <span><strong>水やり変化</strong><small>水分と鉢重量が上昇</small></span><i aria-hidden="true">→</i>
+                </button>
+              </div>
+              <button class="secondary-button" id="random-demo-button" type="button">ランダムなデモ値を生成</button>
+            </section>
+          </aside>
+        </div>
+
+        <section class="panel history-panel" aria-labelledby="history-title">
+          <div class="section-heading history-heading">
+            <div><p class="section-number">04 / SNAPSHOT</p><h2 id="history-title">観察スナップショット</h2></div>
+            <div class="history-actions"><button class="primary-button" id="save-button" type="button">現在の状態を記録</button><button class="text-button danger-button" id="clear-button" type="button">履歴を削除</button></div>
+          </div>
+          <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+          <div class="history-list" id="history-list"></div>
+          <p class="empty-history" id="empty-history">観察履歴はまだありません。</p>
+        </section>
+
+        <section class="future-note" aria-label="実機接続について">
+          <span>DEMO SENSOR ADAPTER</span>
+          <p>現在はデモデータで動作中です。将来は同じ読み取り形式の実機用アダプターへ交換し、ESP32から値を受け取る予定です。</p>
+        </section>
+      </main>
+
+      <footer><p>Plant AI <span>v0.1.0</span></p><p>判断を代わるのではなく、判断材料を増やす。</p></footer>
+    </div>
+  </body>
+</html>
