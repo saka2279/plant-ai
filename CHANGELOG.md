@@ -2,6 +2,33 @@
 
 このファイルにはPlant AIの主な変更内容を記録します。
 
+## [0.2.0] - 2026-07-10
+
+Plant AI v0.2.0として、ELEGOO UNO R3と土壌水分センサー1本による実測準備を追加しました。Webアプリv0.1.1の既存機能は維持しています。
+
+### Added
+
+- ELEGOO UNO R3のA0生値をUSBシリアルへ約1秒間隔で出力するArduinoスケッチ
+- 20回測定の平均値と、同じ測定内の最小・最大値を出力する処理
+- センサー生値が水分率ではないことを示す起動メッセージ
+- 使用部品、安全確認、配線、Arduino IDEでの書き込み手順をREADME.mdへ追加
+- センサー未接続、空気中、乾いた土、湿った土の測定記録用`docs/calibration.md`
+
+### Changed
+
+- 将来の実機構成をESP32前提からELEGOO UNO R3／USBシリアル前提へ整理
+- `DemoSensorAdapter`を維持し、将来`SerialSensorAdapter`を追加する構成をREADME.mdへ明記
+
+### Verified
+
+- Arduino AVR Boards 1.8.8のArduino Uno向けにスケッチのコンパイルが成功
+
+### Pending hardware verification
+
+- センサーモジュール型番と対応電圧の確認
+- UNO R3のUSB認識とスケッチの書き込み
+- 各条件の実測と1分以上の連続測定
+
 ## [0.1.1] - 2026-07-10
 
 Plant AI v0.1.1として、コンテスト説明用のデモ品質とデータの持ち出しやすさを改善しました。
