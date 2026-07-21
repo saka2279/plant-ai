@@ -37,7 +37,9 @@ body {
 }
 
 button,
-input { font: inherit; }
+input,
+select,
+textarea { font: inherit; }
 
 button { color: inherit; }
 
@@ -449,6 +451,8 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border: 5px s
 .sensor-help { margin: 8px 0 0; color: var(--ink-soft); font-size: 0.75rem; }
 
 input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
 button:focus-visible,
 a:focus-visible { outline: 3px solid rgba(46, 107, 81, 0.35); outline-offset: 3px; }
 
@@ -518,6 +522,163 @@ a:focus-visible { outline: 3px solid rgba(46, 107, 81, 0.35); outline-offset: 3p
 .snapshot-delete { grid-column: 1 / -1; justify-self: start; min-height: 36px; margin-top: 5px; padding: 3px 0; border: 0; border-bottom: 1px solid currentColor; background: transparent; color: var(--red); font-size: 0.75rem; font-weight: 700; cursor: pointer; }
 .empty-history { margin: 18px 0 0; padding: 24px 12px; border: 1px dashed #c8cec2; border-radius: 11px; color: var(--ink-soft); text-align: center; }
 
+.measurement-panel { margin-top: 16px; }
+.measurement-heading { align-items: center; }
+.actual-data-badge {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid var(--green);
+  border-radius: 100px;
+  color: var(--green-dark);
+  background: var(--green-light);
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.measurement-intro,
+.data-kind-note {
+  margin: 14px 0 0;
+  padding: 13px 14px;
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.data-kind-note strong { color: var(--orange); }
+
+.measurement-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+
+.field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  align-content: start;
+}
+
+.field > span { font-size: 0.82rem; font-weight: 800; }
+.field b { color: var(--red); font-size: 0.68rem; }
+.field i { color: var(--ink-soft); font-size: 0.7rem; font-style: normal; font-weight: 500; }
+.field small { color: var(--ink-soft); font-size: 0.71rem; }
+
+.field input,
+.field select,
+.field textarea {
+  min-width: 0;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 11px;
+  border: 1px solid #bbc5b9;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.field textarea { min-height: 90px; resize: vertical; }
+
+.measurement-form-actions {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+}
+
+.measurement-form-actions span { color: var(--ink-soft); font-size: 0.74rem; }
+.measurement-feedback { margin-top: 10px; }
+
+.chart-heading,
+.measurement-list-heading {
+  display: grid;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.chart-heading h3,
+.measurement-list-heading h3 { margin: 0; font-size: 1.08rem; }
+.chart-heading p,
+.measurement-list-heading p { margin: 3px 0 0; color: var(--ink-soft); font-size: 0.76rem; }
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+}
+
+.chart-legend span { display: inline-flex; gap: 6px; align-items: center; }
+.chart-legend i { display: inline-block; width: 10px; height: 10px; }
+.legend-dot { border-radius: 50%; background: var(--green); }
+.legend-water { background: var(--orange); transform: rotate(45deg); }
+
+.chart-shell {
+  position: relative;
+  min-width: 0;
+  min-height: 260px;
+  margin-top: 12px;
+  padding: 10px 6px 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+#raw-chart { display: block; width: 100%; height: 280px; }
+.empty-chart {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 20px;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.measurement-actions { display: grid; gap: 8px; }
+.measurement-actions .secondary-button { width: 100%; margin-top: 0; }
+.measurement-actions button:disabled { opacity: 0.42; cursor: not-allowed; }
+
+.measurement-list { display: grid; gap: 10px; margin-top: 14px; }
+.measurement-card {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.measurement-card-head { display: flex; min-width: 0; gap: 10px; align-items: flex-start; justify-content: space-between; }
+.measurement-card time { color: var(--ink-soft); font-size: 0.75rem; }
+.measurement-source {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 100px;
+  background: var(--green-light);
+  color: var(--green-dark);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.measurement-raw { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
+.measurement-raw strong { font-family: Georgia, serif; font-size: 1.45rem; }
+.measurement-raw span { color: var(--ink-soft); font-size: 0.76rem; }
+.measurement-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.measurement-meta span { padding: 4px 8px; border-radius: 7px; background: #fff; color: var(--ink-soft); font-size: 0.72rem; }
+.measurement-meta .watered { background: var(--orange-light); color: var(--orange); font-weight: 800; }
+.measurement-memo { margin: 0; color: var(--ink-soft); font-size: 0.8rem; white-space: pre-wrap; }
+.measurement-delete { justify-self: start; min-height: 36px; padding: 3px 0; border: 0; border-bottom: 1px solid currentColor; background: transparent; color: var(--red); font-size: 0.75rem; font-weight: 700; cursor: pointer; }
+
 .future-note { display: grid; gap: 8px; margin: 16px 0 50px; padding: 18px; border: 1px solid rgba(22, 60, 49, 0.19); border-radius: 15px; background: rgba(255, 253, 248, 0.45); }
 .future-note span { color: var(--green); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.13em; }
 .future-note p { margin: 0; color: var(--ink-soft); font-size: 0.84rem; }
@@ -537,6 +698,13 @@ footer span { margin-left: 5px; font-family: "Hiragino Kaku Gothic ProN", sans-s
   .compact-card:last-child { grid-column: 1 / -1; }
   .decision-main { grid-template-columns: minmax(0, 1fr) 220px; align-items: end; }
   .history-heading { display: flex; }
+  .measurement-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .field-wide { grid-column: 1 / -1; }
+  .measurement-form-actions { grid-template-columns: auto minmax(0, 1fr); }
+  .chart-heading,
+  .measurement-list-heading { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+  .measurement-actions { grid-template-columns: repeat(2, auto); }
+  .measurement-actions .secondary-button { width: auto; }
 }
 
 @media (min-width: 900px) {
@@ -551,6 +719,7 @@ footer span { margin-left: 5px; font-family: "Hiragino Kaku Gothic ProN", sans-s
   .compact-card:last-child { grid-column: auto; }
   .sensor-card:not(.sensor-moisture) { align-self: stretch; }
   .future-note { grid-template-columns: 190px minmax(0, 1fr); align-items: center; padding: 22px 26px; }
+  .measurement-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   footer { display: flex; justify-content: space-between; text-align: initial; }
   footer p + p { margin-top: 0; }
 }

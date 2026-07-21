@@ -3,12 +3,13 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="複数センサーの一致度と根拠からカポックの状態を考えるPlant AI v0.1.1デモ">
-    <title>Plant AI v0.1.1 | カポック・デジタルツイン</title>
+    <meta name="description" content="カポックのデモ判定と土壌水分センサーのADC生値を記録・可視化するPlant AI v0.2.1">
+    <title>Plant AI v0.2.1 | カポック・デジタルツイン</title>
     <link rel="icon" href="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=">
     <link rel="stylesheet" href="style.css">
     <script src="logic.js" defer></script>
     <script src="sensor-adapters.js" defer></script>
+    <script src="measurement-records.js" defer></script>
     <script src="script.js" defer></script>
   </head>
   <body>
@@ -19,8 +20,8 @@
           <span>Plant AI</span>
         </a>
         <div class="header-meta">
-          <span class="connection-pill"><i aria-hidden="true"></i>デモ接続中</span>
-          <span class="version-badge">v0.1.1</span>
+          <span class="connection-pill"><i aria-hidden="true"></i>デモ画面・実測記録</span>
+          <span class="version-badge">v0.2.1</span>
         </div>
       </header>
 
@@ -137,11 +138,93 @@
           </aside>
         </div>
 
+        <section class="panel measurement-panel" aria-labelledby="measurement-title">
+          <div class="section-heading measurement-heading">
+            <div>
+              <p class="section-number">04 / ACTUAL MEASUREMENT</p>
+              <h2 id="measurement-title">カポックの実測記録</h2>
+            </div>
+            <span class="actual-data-badge">実測データ</span>
+          </div>
+          <p class="measurement-intro">Arduinoのシリアル出力を確認して、測定した値と観察内容を入力します。ここに保存する値は0〜1023のADC生値であり、水分率ではありません。raw値だけで水やりを判断しないでください。</p>
+
+          <form class="measurement-form" id="measurement-form">
+            <label class="field field-wide" for="measurement-datetime">
+              <span>測定日時 <b>必須</b></span>
+              <input id="measurement-datetime" name="measuredAt" type="datetime-local" required>
+              <small>実際に測定した日時を入力してください。自動では補いません。</small>
+            </label>
+            <label class="field" for="raw-avg-input">
+              <span>raw_avg <b>必須</b></span>
+              <input id="raw-avg-input" name="rawAvg" type="number" min="0" max="1023" step="0.1" inputmode="decimal" required>
+            </label>
+            <label class="field" for="raw-min-input">
+              <span>raw_min <b>必須</b></span>
+              <input id="raw-min-input" name="rawMin" type="number" min="0" max="1023" step="0.1" inputmode="decimal" required>
+            </label>
+            <label class="field" for="raw-max-input">
+              <span>raw_max <b>必須</b></span>
+              <input id="raw-max-input" name="rawMax" type="number" min="0" max="1023" step="0.1" inputmode="decimal" required>
+            </label>
+            <label class="field" for="watering-input">
+              <span>この測定時点までの水やり <b>必須</b></span>
+              <select id="watering-input" name="watering" required>
+                <option value="">選択してください</option>
+                <option value="no">なし</option>
+                <option value="yes">あり</option>
+                <option value="unknown">未確認</option>
+              </select>
+            </label>
+            <label class="field" for="soil-feel-input">
+              <span>土の感触 <b>必須</b></span>
+              <select id="soil-feel-input" name="soilFeel" required>
+                <option value="">選択してください</option>
+                <option value="dry">乾いている</option>
+                <option value="slightlyDry">やや乾いている</option>
+                <option value="moist">しっとりしている</option>
+                <option value="wet">湿っている</option>
+                <option value="unknown">未確認</option>
+              </select>
+            </label>
+            <label class="field field-wide" for="measurement-memo">
+              <span>メモ <i>任意・300文字まで</i></span>
+              <textarea id="measurement-memo" name="memo" maxlength="300" rows="3" placeholder="葉の様子、測定位置、前回からの変化など"></textarea>
+            </label>
+            <div class="measurement-form-actions field-wide">
+              <button class="primary-button" type="submit">実測記録を登録</button>
+              <span>デモ値はこの記録へ自動追加されません。</span>
+            </div>
+          </form>
+
+          <p class="feedback measurement-feedback" id="measurement-feedback" role="status" aria-live="polite"></p>
+
+          <div class="chart-heading">
+            <div><h3>raw_avgの時系列</h3><p>左から右へ時間が進みます。橙色のひし形は「水やりあり」と記録した測定です。</p></div>
+            <div class="chart-legend" aria-label="グラフの凡例"><span><i class="legend-dot"></i>通常の測定</span><span><i class="legend-water"></i>水やりあり</span></div>
+          </div>
+          <div class="chart-shell" id="chart-shell">
+            <canvas id="raw-chart" role="img" aria-label="raw_avgの時系列グラフ。実測記録がまだありません。"></canvas>
+            <p class="empty-chart" id="empty-chart">グラフに表示する実測記録はまだありません。</p>
+          </div>
+
+          <div class="measurement-list-heading">
+            <div><h3>保存した実測記録</h3><p id="measurement-count">0件</p></div>
+            <div class="measurement-actions">
+              <button class="secondary-button" id="measurement-export-button" type="button" disabled>実測CSVを書き出す</button>
+              <button class="secondary-button" id="measurement-import-button" type="button">実測CSVを読み込む</button>
+              <input id="measurement-csv-input" type="file" accept=".csv,text/csv" hidden>
+            </div>
+          </div>
+          <div class="measurement-list" id="measurement-list"></div>
+          <p class="empty-history" id="empty-measurements">実測記録はまだありません。</p>
+        </section>
+
         <section class="panel history-panel" aria-labelledby="history-title">
           <div class="section-heading history-heading">
-            <div><p class="section-number">04 / SNAPSHOT</p><h2 id="history-title">観察スナップショット</h2></div>
+            <div><p class="section-number">05 / DEMO SNAPSHOT</p><h2 id="history-title">デモ観察スナップショット</h2></div>
             <div class="history-actions"><button class="primary-button" id="save-button" type="button">現在の状態を記録</button><button class="secondary-button export-button" id="export-button" type="button">CSVを書き出す</button><button class="text-button danger-button" id="clear-button" type="button">履歴を削除</button></div>
           </div>
+          <p class="data-kind-note"><strong>デモデータ</strong>：判定シナリオの保存欄です。上の実測記録とは別に保存されます。</p>
           <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
           <div class="history-list" id="history-list"></div>
           <p class="empty-history" id="empty-history">観察履歴はまだありません。</p>
@@ -153,7 +236,7 @@
         </section>
       </main>
 
-      <footer><p>Plant AI <span>v0.1.1</span></p><p>判断を代わるのではなく、判断材料を増やす。</p></footer>
+      <footer><p>Plant AI <span>v0.2.1</span></p><p>判断を代わるのではなく、判断材料を増やす。</p></footer>
     </div>
   </body>
 </html>
