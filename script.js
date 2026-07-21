@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const APP_VERSION = "v0.1.1";
+  const APP_VERSION = "v0.2.1";
   const STORAGE_KEY = "plant-ai-digital-twin-v0.1.0";
   const LEGACY_STORAGE_KEY = "plant-ai-measurements-v0.1.0";
   const MAX_HISTORY_ITEMS = 30;
@@ -32,7 +32,24 @@
     clearButton: document.querySelector("#clear-button"),
     historyList: document.querySelector("#history-list"),
     emptyHistory: document.querySelector("#empty-history"),
-    feedback: document.querySelector("#feedback")
+    feedback: document.querySelector("#feedback"),
+    measurementForm: document.querySelector("#measurement-form"),
+    measurementDate: document.querySelector("#measurement-datetime"),
+    rawAvg: document.querySelector("#raw-avg-input"),
+    rawMin: document.querySelector("#raw-min-input"),
+    rawMax: document.querySelector("#raw-max-input"),
+    watering: document.querySelector("#watering-input"),
+    soilFeel: document.querySelector("#soil-feel-input"),
+    measurementMemo: document.querySelector("#measurement-memo"),
+    measurementFeedback: document.querySelector("#measurement-feedback"),
+    measurementList: document.querySelector("#measurement-list"),
+    emptyMeasurements: document.querySelector("#empty-measurements"),
+    measurementCount: document.querySelector("#measurement-count"),
+    rawChart: document.querySelector("#raw-chart"),
+    emptyChart: document.querySelector("#empty-chart"),
+    measurementExportButton: document.querySelector("#measurement-export-button"),
+    measurementImportButton: document.querySelector("#measurement-import-button"),
+    measurementCsvInput: document.querySelector("#measurement-csv-input")
   };
 
   let previousReading = null;
@@ -41,6 +58,10 @@
   let activeScenario = "balanced";
   let history = loadHistory();
   let feedbackTimer;
+  const measurementLoadResult = PlantAIMeasurements.loadRecords(localStorage);
+  let measurements = measurementLoadResult.records;
+  let measurementFeedbackTimer;
+  let chartResizeFrame;
 
   function readInputs() {
     return PlantAILogic.normalizeReading({
@@ -285,7 +306,7 @@
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "plant-ai-snapshots-v0.1.1.csv";
+    link.download = "plant-ai-demo-snapshots-v0.2.1.csv";
     document.body.append(link);
     link.click();
     window.setTimeout(() => {
@@ -318,6 +339,274 @@
     feedbackTimer = window.setTimeout(() => { elements.feedback.textContent = ""; }, 4000);
   }
 
+  function createMeasurementRecord() {
+    return PlantAIMeasurements.normalizeRecord({
+      measuredAt: elements.measurementDate.value,
+      rawAvg: elements.rawAvg.value,
+      rawMin: elements.rawMin.value,
+      rawMax: elements.rawMax.value,
+      watering: elements.watering.value,
+      soilFeel: elements.soilFeel.value,
+      memo: elements.measurementMemo.value,
+      source: "actual",
+      version: APP_VERSION
+    });
+  }
+
+  function saveMeasurement(event) {
+    event.preventDefault();
+    if (!elements.measurementForm.reportValidity()) return;
+    const record = createMeasurementRecord();
+    if (!record) {
+      showMeasurementFeedback("入力内容を確認してください。raw_min ≦ raw_avg ≦ raw_maxの順で、各値は0〜1023にしてください。", true);
+      return;
+    }
+
+    const next = PlantAIMeasurements.mergeRecords(measurements, [record]);
+    if (!PlantAIMeasurements.saveRecords(localStorage, next)) {
+      showMeasurementFeedback("実測記録を保存できませんでした。ブラウザの保存設定をご確認ください。", true);
+      return;
+    }
+
+    measurements = next;
+    elements.measurementForm.reset();
+    renderMeasurements();
+    showMeasurementFeedback("実測記録を保存しました。デモ履歴とは別に保管されています。");
+  }
+
+  function renderMeasurements() {
+    measurements = PlantAIMeasurements.sortNewestFirst(measurements);
+    elements.measurementList.replaceChildren();
+
+    measurements.forEach((record) => {
+      const card = document.createElement("article");
+      card.className = "measurement-card";
+
+      const head = document.createElement("div");
+      head.className = "measurement-card-head";
+      const time = document.createElement("time");
+      time.dateTime = record.measuredAt;
+      time.textContent = formatMeasurementDate(record.measuredAt);
+      const source = document.createElement("span");
+      source.className = "measurement-source";
+      source.textContent = "実測";
+      head.append(time, source);
+
+      const raw = document.createElement("div");
+      raw.className = "measurement-raw";
+      const average = document.createElement("strong");
+      average.textContent = `raw_avg ${record.rawAvg}`;
+      const range = document.createElement("span");
+      range.textContent = `raw_min ${record.rawMin} ／ raw_max ${record.rawMax}`;
+      raw.append(average, range);
+
+      const meta = document.createElement("div");
+      meta.className = "measurement-meta";
+      const watering = document.createElement("span");
+      watering.textContent = `水やり ${PlantAIMeasurements.WATERING_LABELS[record.watering]}`;
+      watering.classList.toggle("watered", record.watering === "yes");
+      const soil = document.createElement("span");
+      soil.textContent = `土 ${PlantAIMeasurements.SOIL_FEEL_LABELS[record.soilFeel]}`;
+      meta.append(watering, soil);
+
+      card.append(head, raw, meta);
+      if (record.memo) {
+        const memo = document.createElement("p");
+        memo.className = "measurement-memo";
+        memo.textContent = record.memo;
+        card.append(memo);
+      }
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "measurement-delete";
+      deleteButton.textContent = "この実測記録を削除";
+      deleteButton.setAttribute("aria-label", `${formatMeasurementDate(record.measuredAt)}の実測記録を削除`);
+      deleteButton.addEventListener("click", () => deleteMeasurement(record.id));
+      card.append(deleteButton);
+      elements.measurementList.append(card);
+    });
+
+    elements.measurementCount.textContent = `${measurements.length}件`;
+    elements.emptyMeasurements.hidden = measurements.length > 0;
+    elements.measurementExportButton.disabled = measurements.length === 0;
+    drawRawChart();
+  }
+
+  function deleteMeasurement(id) {
+    const next = measurements.filter((record) => record.id !== id);
+    if (next.length === measurements.length) return;
+    if (!PlantAIMeasurements.saveRecords(localStorage, next)) {
+      showMeasurementFeedback("実測記録を削除できませんでした。", true);
+      return;
+    }
+    measurements = next;
+    renderMeasurements();
+    showMeasurementFeedback("選択した実測記録を削除しました。");
+  }
+
+  function drawRawChart() {
+    const records = PlantAIMeasurements.sortNewestFirst(measurements).reverse();
+    elements.emptyChart.hidden = records.length > 0;
+    elements.rawChart.hidden = records.length === 0;
+    if (records.length === 0) {
+      elements.rawChart.setAttribute("aria-label", "raw_avgの時系列グラフ。実測記録がまだありません。");
+      return;
+    }
+
+    const canvas = elements.rawChart;
+    const width = Math.max(260, Math.floor(canvas.getBoundingClientRect().width));
+    const height = 280;
+    const pixelRatio = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = Math.floor(width * pixelRatio);
+    canvas.height = Math.floor(height * pixelRatio);
+    const context = canvas.getContext("2d");
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    context.clearRect(0, 0, width, height);
+
+    const colors = getComputedStyle(document.documentElement);
+    const green = colors.getPropertyValue("--green").trim() || "#2e6b51";
+    const orange = colors.getPropertyValue("--orange").trim() || "#af6739";
+    const line = colors.getPropertyValue("--line").trim() || "#d8dccf";
+    const inkSoft = colors.getPropertyValue("--ink-soft").trim() || "#587067";
+    const plot = { left: 48, right: width - 16, top: 20, bottom: height - 48 };
+    const values = records.map((record) => record.rawAvg);
+    const timestamps = records.map((record) => new Date(record.measuredAt).getTime());
+    const valueMin = Math.min(...values);
+    const valueMax = Math.max(...values);
+    const padding = Math.max(5, (valueMax - valueMin) * 0.15);
+    const lower = Math.max(0, valueMin - padding);
+    const upper = Math.min(1023, valueMax + padding);
+    const valueSpan = Math.max(1, upper - lower);
+    const timeMin = Math.min(...timestamps);
+    const timeMax = Math.max(...timestamps);
+    const timeSpan = timeMax - timeMin;
+    const xFor = (record, index) => {
+      if (records.length === 1) return (plot.left + plot.right) / 2;
+      const ratio = timeSpan === 0 ? index / (records.length - 1) : (new Date(record.measuredAt).getTime() - timeMin) / timeSpan;
+      return plot.left + ratio * (plot.right - plot.left);
+    };
+    const yFor = (value) => plot.bottom - ((value - lower) / valueSpan) * (plot.bottom - plot.top);
+
+    context.font = '11px "Yu Gothic", sans-serif';
+    context.fillStyle = inkSoft;
+    context.strokeStyle = line;
+    context.lineWidth = 1;
+    context.textAlign = "right";
+    for (let step = 0; step <= 4; step += 1) {
+      const ratio = step / 4;
+      const y = plot.bottom - ratio * (plot.bottom - plot.top);
+      const label = lower + ratio * valueSpan;
+      context.beginPath();
+      context.moveTo(plot.left, y);
+      context.lineTo(plot.right, y);
+      context.stroke();
+      context.fillText(label.toFixed(label % 1 === 0 ? 0 : 1), plot.left - 7, y + 4);
+    }
+
+    context.strokeStyle = green;
+    context.lineWidth = 2;
+    context.beginPath();
+    records.forEach((record, index) => {
+      const x = xFor(record, index);
+      const y = yFor(record.rawAvg);
+      if (index === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    });
+    context.stroke();
+
+    records.forEach((record, index) => {
+      const x = xFor(record, index);
+      const y = yFor(record.rawAvg);
+      context.fillStyle = record.watering === "yes" ? orange : green;
+      context.beginPath();
+      if (record.watering === "yes") {
+        context.moveTo(x, y - 7);
+        context.lineTo(x + 7, y);
+        context.lineTo(x, y + 7);
+        context.lineTo(x - 7, y);
+        context.closePath();
+      } else {
+        context.arc(x, y, 4.5, 0, Math.PI * 2);
+      }
+      context.fill();
+    });
+
+    context.fillStyle = inkSoft;
+    context.textAlign = records.length === 1 ? "center" : "left";
+    context.fillText(formatChartDate(records[0].measuredAt), records.length === 1 ? (plot.left + plot.right) / 2 : plot.left, height - 20);
+    if (records.length > 1) {
+      context.textAlign = "right";
+      context.fillText(formatChartDate(records[records.length - 1].measuredAt), plot.right, height - 20);
+    }
+
+    const wateredCount = records.filter((record) => record.watering === "yes").length;
+    const firstRecord = records[0];
+    const lastRecord = records[records.length - 1];
+    elements.rawChart.setAttribute("aria-label", `raw_avgの時系列グラフ。古い順に${records.length}件。${formatMeasurementDate(firstRecord.measuredAt)}の${firstRecord.rawAvg}から${formatMeasurementDate(lastRecord.measuredAt)}の${lastRecord.rawAvg}まで。値の範囲${valueMin}から${valueMax}、水やりあり${wateredCount}件。`);
+  }
+
+  function exportMeasurementCsv() {
+    if (measurements.length === 0) return;
+    const blob = new Blob([`\uFEFF${PlantAIMeasurements.buildCsv(measurements)}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "plant-ai-actual-measurements-v0.2.1.csv";
+    document.body.append(link);
+    link.click();
+    window.setTimeout(() => {
+      link.remove();
+      URL.revokeObjectURL(url);
+    }, 1000);
+    showMeasurementFeedback(`${measurements.length}件の実測記録をCSVへ書き出しました。`);
+  }
+
+  function importMeasurementCsvText(text) {
+    const parsed = PlantAIMeasurements.parseCsv(text);
+    const next = PlantAIMeasurements.mergeRecords(measurements, parsed.records);
+    const addedCount = next.length - measurements.length;
+    if (!PlantAIMeasurements.saveRecords(localStorage, next)) throw new Error("ブラウザへ保存できませんでした。");
+    measurements = next;
+    renderMeasurements();
+    return { importedCount: parsed.records.length, addedCount, skippedCount: parsed.skippedCount };
+  }
+
+  async function importMeasurementCsvFile() {
+    const file = elements.measurementCsvInput.files?.[0];
+    if (!file) return;
+    try {
+      const result = importMeasurementCsvText(await file.text());
+      const skipped = result.skippedCount ? ` 読み取れない${result.skippedCount}行は除外しました。` : "";
+      showMeasurementFeedback(`${result.importedCount}件を確認し、新しく${result.addedCount}件を読み込みました。${skipped}`.trim());
+    } catch (error) {
+      showMeasurementFeedback(`CSVを読み込めませんでした。${error.message}`, true);
+    } finally {
+      elements.measurementCsvInput.value = "";
+    }
+  }
+
+  function formatMeasurementDate(isoDate) {
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) return "日時不明";
+    return new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
+  }
+
+  function formatChartDate(isoDate) {
+    const date = new Date(isoDate);
+    return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
+  }
+
+  function showMeasurementFeedback(message, isError = false) {
+    window.clearTimeout(measurementFeedbackTimer);
+    elements.measurementFeedback.textContent = message;
+    elements.measurementFeedback.classList.toggle("is-error", isError);
+    measurementFeedbackTimer = window.setTimeout(() => {
+      elements.measurementFeedback.textContent = "";
+      elements.measurementFeedback.classList.remove("is-error");
+    }, 6000);
+  }
+
   elements.surfaceRange.addEventListener("input", () => {
     elements.surfaceNumber.value = elements.surfaceRange.value;
     elements.surfaceOutput.textContent = elements.surfaceRange.value;
@@ -342,9 +631,24 @@
   elements.saveButton.addEventListener("click", saveSnapshot);
   elements.exportButton.addEventListener("click", exportHistoryCsv);
   elements.clearButton.addEventListener("click", clearHistory);
+  elements.measurementForm.addEventListener("submit", saveMeasurement);
+  elements.measurementExportButton.addEventListener("click", exportMeasurementCsv);
+  elements.measurementImportButton.addEventListener("click", () => elements.measurementCsvInput.click());
+  elements.measurementCsvInput.addEventListener("change", importMeasurementCsvFile);
+  window.addEventListener("resize", () => {
+    window.cancelAnimationFrame(chartResizeFrame);
+    chartResizeFrame = window.requestAnimationFrame(drawRawChart);
+  });
 
-  // CSV生成結果を変更せず確認するための読み取り専用インターフェースです。
-  globalThis.PlantAIApp = Object.freeze({ getHistoryCsv: buildHistoryCsv, getHistoryCount: () => history.length });
+  // ブラウザ検証で保存状態とCSV往復を確認するためのインターフェースです。
+  globalThis.PlantAIApp = Object.freeze({
+    getHistoryCsv: buildHistoryCsv,
+    getHistoryCount: () => history.length,
+    getMeasurementCsv: () => PlantAIMeasurements.buildCsv(measurements),
+    getMeasurementCount: () => measurements.length,
+    getMeasurements: () => measurements.map((record) => ({ ...record })),
+    importMeasurementCsv: importMeasurementCsvText
+  });
 
   const initial = adapter.getInitialReading();
   previousReading = initial.previous;
@@ -352,4 +656,6 @@
   analyzeAndRender(initial.current, initial.previous);
   setActiveScenarioButton("balanced");
   renderHistory();
+  renderMeasurements();
+  if (measurementLoadResult.warnings.length > 0) showMeasurementFeedback(measurementLoadResult.warnings.join(" "), true);
 })();
