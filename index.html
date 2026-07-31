@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="カポックのデモ判定と土壌水分センサーのADC生値を記録・可視化するPlant AI v0.2.1">
-    <title>Plant AI v0.2.1 | カポック・デジタルツイン</title>
+    <meta name="description" content="カポックのデモ判定と土壌水分センサーのADC生値を記録・可視化するPlant AI v0.3.0">
+    <title>Plant AI v0.3.0 | カポック・デジタルツイン</title>
     <link rel="icon" href="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=">
     <link rel="stylesheet" href="style.css">
     <script src="logic.js" defer></script>
@@ -15,228 +15,248 @@
   <body>
     <div class="page-shell">
       <header class="site-header">
-        <a class="brand" href="#top" aria-label="Plant AI ホーム">
+        <a class="brand" href="#top" aria-label="Plant AI 記録画面の先頭へ">
           <span class="brand-mark" aria-hidden="true"><span></span></span>
-          <span>Plant AI</span>
+          <span><strong>Plant AI</strong><small>一鉢の観察台帳</small></span>
         </a>
-        <div class="header-meta">
-          <span class="connection-pill"><i aria-hidden="true"></i>デモ画面・実測記録</span>
-          <span class="version-badge">v0.2.1</span>
-        </div>
+        <span class="version-badge">v0.3.0</span>
       </header>
 
       <main id="top">
-        <section class="hero" aria-labelledby="page-title">
+        <section class="compact-tag" aria-label="観察対象と測定条件">
           <div>
-            <p class="eyebrow">KAPOK DIGITAL TWIN</p>
-            <h1 id="page-title">複数の変化から、<br><em>急がず考える。</em></h1>
-            <p class="hero-description">表面だけを見て決めず、根元の水分や鉢の重さも照らし合わせる、カポックのデジタルツイン・デモです。</p>
+            <span>観察対象</span>
+            <strong class="plant-name">カポック</strong>
           </div>
-          <div class="plant-identity" aria-label="観察対象 カポック">
-            <span class="plant-illustration" aria-hidden="true"><i></i><b></b></span>
-            <span><small>観察対象</small><strong>カポック</strong><em>デモ個体 01</em></span>
-          </div>
+          <dl>
+            <div><dt>機器</dt><dd>UNO R3 / A0</dd></div>
+            <div><dt>記録値</dt><dd>RAW ADC 0–1023</dd></div>
+            <div><dt>入力</dt><dd>USBシリアルから手動転記</dd></div>
+          </dl>
         </section>
 
-        <aside class="concept-banner" aria-label="現在の開発段階">
-          <strong>現在はコンセプトデモです</strong>
-          <p>確からしさはセンサー情報の整合性を表します。個体別学習は、今後カポックの実測データを用いて実装する予定です。</p>
-        </aside>
-
-        <section class="decision-panel decision-good" id="decision-panel" aria-labelledby="decision-title" aria-live="polite">
-          <div class="decision-topline">
-            <p class="section-number">TODAY'S READING</p>
-            <span class="agreement-badge" id="agreement-badge">センサー一致</span>
-          </div>
-          <div class="decision-main">
+        <section class="record-now" aria-labelledby="measurement-title">
+          <header class="record-heading">
             <div>
-              <p class="decision-kicker">現在の状態の目安</p>
-              <h2 id="decision-title">水分あり</h2>
-              <p class="decision-summary" id="decision-summary">表層と根元の値が近く、鉢重量にも大きな変化はありません。</p>
+              <p class="eyebrow">今回行うこと</p>
+              <h1 id="measurement-title">今回の測定を記録</h1>
             </div>
-            <div class="certainty-box">
-              <span>判断の確からしさ</span>
-              <strong id="certainty-label">高い</strong>
-              <div class="certainty-meter" id="certainty-meter" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-              <small>予測精度ではなく、センサー情報の整合性を示す目安です。</small>
-            </div>
-          </div>
-          <div class="event-notice" id="event-notice" hidden></div>
-        </section>
-
-        <div class="main-grid">
-          <section class="panel sensors-panel" aria-labelledby="sensors-title">
-            <div class="section-heading">
-              <div>
-                <p class="section-number">01 / SENSOR INPUT</p>
-                <h2 id="sensors-title">センサー値</h2>
-              </div>
-              <span class="manual-label">手入力できます</span>
-            </div>
-
-            <div class="sensor-grid">
-              <article class="sensor-card sensor-moisture">
-                <div class="sensor-card-head"><span class="sensor-icon icon-surface" aria-hidden="true"></span><div><small>土の表面付近</small><h3>表層水分</h3></div></div>
-                <div class="sensor-value"><output id="surface-output" for="surface-range surface-number">46</output><span>%</span></div>
-                <input id="surface-range" data-sensor="surface" type="range" min="0" max="100" step="1" value="46" aria-label="表層水分スライダー">
-                <label class="compact-input" for="surface-number"><span>数値</span><span><input id="surface-number" data-sensor="surface" type="number" min="0" max="100" step="1" value="46" inputmode="numeric"><i>%</i></span></label>
-              </article>
-
-              <article class="sensor-card sensor-moisture">
-                <div class="sensor-card-head"><span class="sensor-icon icon-root" aria-hidden="true"></span><div><small>根に近い位置</small><h3>根元水分</h3></div></div>
-                <div class="sensor-value"><output id="root-output" for="root-range root-number">52</output><span>%</span></div>
-                <input id="root-range" data-sensor="root" type="range" min="0" max="100" step="1" value="52" aria-label="根元水分スライダー">
-                <label class="compact-input" for="root-number"><span>数値</span><span><input id="root-number" data-sensor="root" type="number" min="0" max="100" step="1" value="52" inputmode="numeric"><i>%</i></span></label>
-              </article>
-
-              <article class="sensor-card">
-                <div class="sensor-card-head"><span class="sensor-icon icon-weight" aria-hidden="true"></span><div><small>直近6時間</small><h3>鉢重量変化</h3></div></div>
-                <label class="large-input" for="weight-input"><input id="weight-input" data-sensor="weightChange" type="number" min="-500" max="500" step="1" value="-8" inputmode="decimal"><span>g</span></label>
-                <p class="sensor-help">マイナスは軽く、プラスは重くなった目安です。</p>
-              </article>
-
-              <article class="sensor-card compact-card">
-                <div class="sensor-card-head"><span class="sensor-icon icon-temperature" aria-hidden="true"></span><div><small>室内環境</small><h3>温度</h3></div></div>
-                <label class="large-input" for="temperature-input"><input id="temperature-input" data-sensor="temperature" type="number" min="0" max="50" step="0.1" value="24.2" inputmode="decimal"><span>℃</span></label>
-              </article>
-
-              <article class="sensor-card compact-card">
-                <div class="sensor-card-head"><span class="sensor-icon icon-humidity" aria-hidden="true"></span><div><small>室内環境</small><h3>湿度</h3></div></div>
-                <label class="large-input" for="humidity-input"><input id="humidity-input" data-sensor="humidity" type="number" min="0" max="100" step="1" value="58" inputmode="numeric"><span>%</span></label>
-              </article>
-            </div>
-          </section>
-
-          <aside class="side-stack">
-            <section class="panel reasons-panel" aria-labelledby="reasons-title">
-              <p class="section-number">02 / WHY</p>
-              <h2 id="reasons-title">この判断の根拠</h2>
-              <ol class="reason-list" id="reason-list"></ol>
-              <p class="accuracy-note">「確からしさ」は複数センサーのそろい具合を表す表示で、植物状態の科学的な予測精度ではありません。</p>
-            </section>
-
-            <section class="panel demo-panel" aria-labelledby="demo-title">
-              <p class="section-number">03 / JUDGE DEMO</p>
-              <h2 id="demo-title">審査用デモ</h2>
-              <p class="demo-intro">実機がなくても、判断が変わる4つの場面を再現できます。</p>
-              <div class="scenario-list">
-                <button class="scenario-button" type="button" data-scenario="surfaceDry">
-                  <span><strong>表面だけ乾燥</strong><small>表層18%・根元58%</small><em>深さによって値が違うため、判断を保留する場面です。</em></span><i aria-hidden="true">→</i>
-                </button>
-                <button class="scenario-button" type="button" data-scenario="allDry">
-                  <span><strong>全体が乾燥</strong><small>両方低く、重量も減少</small><em>3つの変化が同じ方向を示す場面です。</em></span><i aria-hidden="true">→</i>
-                </button>
-                <button class="scenario-button" type="button" data-scenario="sensorMismatch">
-                  <span><strong>センサー不一致</strong><small>水分値だけが急変</small><em>重量が変わらず、センサー確認を促す場面です。</em></span><i aria-hidden="true">→</i>
-                </button>
-                <button class="scenario-button scenario-water" type="button" data-scenario="watering">
-                  <span><strong>水やり変化</strong><small>水分と鉢重量が上昇</small><em>複数の上昇から水やり後の変化を再現します。</em></span><i aria-hidden="true">→</i>
-                </button>
-              </div>
-              <button class="secondary-button" id="random-demo-button" type="button">ランダムなデモ値を生成</button>
-            </section>
-          </aside>
-        </div>
-
-        <section class="panel measurement-panel" aria-labelledby="measurement-title">
-          <div class="section-heading measurement-heading">
-            <div>
-              <p class="section-number">04 / ACTUAL MEASUREMENT</p>
-              <h2 id="measurement-title">カポックの実測記録</h2>
-            </div>
-            <span class="actual-data-badge">実測データ</span>
-          </div>
-          <p class="measurement-intro">Arduinoのシリアル出力を確認して、測定した値と観察内容を入力します。ここに保存する値は0〜1023のADC生値であり、水分率ではありません。raw値だけで水やりを判断しないでください。</p>
+            <p>シリアルモニターの測定行を貼り付け、読み取った値を確認して保存します。</p>
+          </header>
 
           <form class="measurement-form" id="measurement-form">
-            <label class="field field-wide" for="measurement-datetime">
-              <span>測定日時 <b>必須</b></span>
-              <input id="measurement-datetime" name="measuredAt" type="datetime-local" required>
-              <small>実際に測定した日時を入力してください。自動では補いません。</small>
-            </label>
-            <label class="field" for="raw-avg-input">
-              <span>raw_avg <b>必須</b></span>
-              <input id="raw-avg-input" name="rawAvg" type="number" min="0" max="1023" step="0.1" inputmode="decimal" required>
-            </label>
-            <label class="field" for="raw-min-input">
-              <span>raw_min <b>必須</b></span>
-              <input id="raw-min-input" name="rawMin" type="number" min="0" max="1023" step="0.1" inputmode="decimal" required>
-            </label>
-            <label class="field" for="raw-max-input">
-              <span>raw_max <b>必須</b></span>
-              <input id="raw-max-input" name="rawMax" type="number" min="0" max="1023" step="0.1" inputmode="decimal" required>
-            </label>
-            <label class="field" for="watering-input">
-              <span>この測定時点までの水やり <b>必須</b></span>
-              <select id="watering-input" name="watering" required>
-                <option value="">選択してください</option>
-                <option value="no">なし</option>
-                <option value="yes">あり</option>
-                <option value="unknown">未確認</option>
-              </select>
-            </label>
-            <label class="field" for="soil-feel-input">
-              <span>土の感触 <b>必須</b></span>
-              <select id="soil-feel-input" name="soilFeel" required>
-                <option value="">選択してください</option>
-                <option value="dry">乾いている</option>
-                <option value="slightlyDry">やや乾いている</option>
-                <option value="moist">しっとりしている</option>
-                <option value="wet">湿っている</option>
-                <option value="unknown">未確認</option>
-              </select>
-            </label>
-            <label class="field field-wide" for="measurement-memo">
-              <span>メモ <i>任意・300文字まで</i></span>
-              <textarea id="measurement-memo" name="memo" maxlength="300" rows="3" placeholder="葉の様子、測定位置、前回からの変化など"></textarea>
-            </label>
-            <div class="measurement-form-actions field-wide">
-              <button class="primary-button" type="submit">実測記録を登録</button>
-              <span>デモ値はこの記録へ自動追加されません。</span>
+            <fieldset class="record-stage input-stage">
+              <legend><span>1</span>測定結果を入力する</legend>
+              <label class="serial-field" for="serial-output-input">
+                <span>Arduinoのシリアル出力</span>
+                <textarea id="serial-output-input" rows="5" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="serial-output-help serial-parse-feedback" placeholder="シリアルモニターの測定行をここに貼り付け"></textarea>
+              </label>
+              <p class="serial-help" id="serial-output-help">複数行のまま貼り付けられます。最新の完全な測定行を読み取ります。</p>
+              <p class="serial-format"><span>出力形式</span><code>uptime_ms=...,raw_avg=...,raw_min=...,raw_max=...,samples=20</code></p>
+              <p class="parse-feedback" id="serial-parse-feedback" role="status" aria-live="polite">測定行を貼り付けると、raw値をここで確認できます。</p>
+
+              <details class="manual-entry" id="manual-entry-details">
+                <summary>詳細を手入力</summary>
+                <p>貼り付けを使わない場合は、3つのADC生値を入力してください。</p>
+                <div class="raw-fields" aria-label="ADC生値の手動入力">
+                  <label class="field" for="raw-avg-input">
+                    <span class="utility-type">raw_avg <b>必須</b></span>
+                    <input id="raw-avg-input" name="rawAvg" type="number" min="0" max="1023" step="0.1" inputmode="decimal" required>
+                  </label>
+                  <label class="field" for="raw-min-input">
+                    <span class="utility-type">raw_min <b>必須</b></span>
+                    <input id="raw-min-input" name="rawMin" type="number" min="0" max="1023" step="0.1" inputmode="decimal" required>
+                  </label>
+                  <label class="field" for="raw-max-input">
+                    <span class="utility-type">raw_max <b>必須</b></span>
+                    <input id="raw-max-input" name="rawMax" type="number" min="0" max="1023" step="0.1" inputmode="decimal" required>
+                  </label>
+                </div>
+                <p class="measurement-rule utility-type">0 ≤ raw_min ≤ raw_avg ≤ raw_max ≤ 1023</p>
+              </details>
+            </fieldset>
+
+            <fieldset class="record-stage confirm-stage">
+              <legend><span>2</span>読み取った内容を確認する</legend>
+              <div class="parsed-summary" id="parsed-summary">
+                <p id="parsed-source">測定結果はまだ入力されていません。</p>
+                <dl>
+                  <div><dt class="utility-type">raw_avg</dt><dd><output id="parsed-raw-avg">—</output></dd></div>
+                  <div><dt class="utility-type">raw_min</dt><dd><output id="parsed-raw-min">—</output></dd></div>
+                  <div><dt class="utility-type">raw_max</dt><dd><output id="parsed-raw-max">—</output></dd></div>
+                </dl>
+              </div>
+
+              <label class="field datetime-field" for="measurement-datetime">
+                <span>測定日時 <b>必須</b></span>
+                <input id="measurement-datetime" name="measuredAt" type="datetime-local" required>
+                <small>現在時刻を入れています。実際の測定時刻と違う場合は修正してください。</small>
+              </label>
+
+              <details class="optional-fields" id="observation-options-details">
+                <summary>水やり・土の感触を変更 <span>現在：未確認</span></summary>
+                <div class="observation-fields">
+                  <label class="field" for="watering-input">
+                    <span>この測定時点までの水やり <b>必須</b></span>
+                    <select id="watering-input" name="watering" required>
+                      <option value="">選択してください</option>
+                      <option value="no">なし</option>
+                      <option value="yes">あり</option>
+                      <option value="unknown" selected>未確認</option>
+                    </select>
+                  </label>
+                  <label class="field" for="soil-feel-input">
+                    <span>土の感触 <b>必須</b></span>
+                    <select id="soil-feel-input" name="soilFeel" required>
+                      <option value="">選択してください</option>
+                      <option value="dry">乾いている</option>
+                      <option value="slightlyDry">やや乾いている</option>
+                      <option value="moist">しっとりしている</option>
+                      <option value="wet">湿っている</option>
+                      <option value="unknown" selected>未確認</option>
+                    </select>
+                  </label>
+                </div>
+              </details>
+
+              <details class="optional-fields" id="memo-details">
+                <summary>メモを追加 <span>任意</span></summary>
+                <label class="field memo-field" for="measurement-memo">
+                  <span>メモ <i>300文字まで</i></span>
+                  <textarea id="measurement-memo" name="memo" maxlength="300" rows="3" placeholder="葉の様子、測定位置、前回からの変化など"></textarea>
+                </label>
+              </details>
+            </fieldset>
+
+            <div class="record-stage save-stage">
+              <div><span class="stage-number">3</span><h2>実測記録として保存する</h2></div>
+              <button class="primary-button" id="measurement-save-button" type="submit" disabled>実測記録を保存</button>
+              <p>保存した内容は、この端末のブラウザに最大500件まで残ります。</p>
+              <p class="feedback measurement-feedback" id="measurement-feedback" role="status" aria-live="polite"></p>
             </div>
           </form>
+        </section>
 
-          <p class="feedback measurement-feedback" id="measurement-feedback" role="status" aria-live="polite"></p>
-
-          <div class="chart-heading">
-            <div><h3>raw_avgの時系列</h3><p>左から右へ時間が進みます。橙色のひし形は「水やりあり」と記録した測定です。</p></div>
+        <section class="content-section trend-section" aria-labelledby="trend-title">
+          <header class="section-heading">
+            <div><p class="eyebrow">最近の変化</p><h2 id="trend-title">グラフで見る</h2></div>
             <div class="chart-legend" aria-label="グラフの凡例"><span><i class="legend-dot"></i>通常の測定</span><span><i class="legend-water"></i>水やりあり</span></div>
-          </div>
+          </header>
+          <p class="section-note"><span class="utility-type">raw_avg</span>を古い順に表示します。朱色のひし形は「水やりあり」の記録です。</p>
           <div class="chart-shell" id="chart-shell">
             <canvas id="raw-chart" role="img" aria-label="raw_avgの時系列グラフ。実測記録がまだありません。"></canvas>
-            <p class="empty-chart" id="empty-chart">グラフに表示する実測記録はまだありません。</p>
+            <p class="empty-chart" id="empty-chart">実測記録を保存すると、ここに変化が表示されます。</p>
           </div>
+        </section>
 
-          <div class="measurement-list-heading">
-            <div><h3>保存した実測記録</h3><p id="measurement-count">0件</p></div>
+        <section class="content-section saved-section" aria-labelledby="saved-title">
+          <header class="section-heading saved-heading">
+            <div><p class="eyebrow">実測データ</p><h2 id="saved-title">保存済み記録</h2><p id="measurement-count">0件</p></div>
             <div class="measurement-actions">
               <button class="secondary-button" id="measurement-export-button" type="button" disabled>実測CSVを書き出す</button>
               <button class="secondary-button" id="measurement-import-button" type="button">実測CSVを読み込む</button>
               <input id="measurement-csv-input" type="file" accept=".csv,text/csv" hidden>
             </div>
-          </div>
+          </header>
           <div class="measurement-list" id="measurement-list"></div>
-          <p class="empty-history" id="empty-measurements">実測記録はまだありません。</p>
+          <p class="empty-history" id="empty-measurements">保存済みの実測記録はまだありません。</p>
         </section>
 
-        <section class="panel history-panel" aria-labelledby="history-title">
-          <div class="section-heading history-heading">
-            <div><p class="section-number">05 / DEMO SNAPSHOT</p><h2 id="history-title">デモ観察スナップショット</h2></div>
-            <div class="history-actions"><button class="primary-button" id="save-button" type="button">現在の状態を記録</button><button class="secondary-button export-button" id="export-button" type="button">CSVを書き出す</button><button class="text-button danger-button" id="clear-button" type="button">履歴を削除</button></div>
-          </div>
-          <p class="data-kind-note"><strong>デモデータ</strong>：判定シナリオの保存欄です。上の実測記録とは別に保存されます。</p>
-          <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
-          <div class="history-list" id="history-list"></div>
-          <p class="empty-history" id="empty-history">観察履歴はまだありません。</p>
+        <section class="demo-disclosure" id="demo-section" aria-labelledby="demo-section-title">
+          <header>
+            <p class="eyebrow">任意の練習機能</p>
+            <h2 id="demo-section-title">判断デモを試す</h2>
+            <p>実測機能ではありません。仮想値を使い、複数の情報から結論を急がず考える流れを試すデモです。</p>
+          </header>
+
+          <details class="demo-details" id="demo-details">
+            <summary>判断デモを開く</summary>
+            <div class="demo-content">
+              <section class="demo-panel" aria-labelledby="demo-title">
+                <div class="demo-heading">
+                  <div><p class="section-label">場面を選ぶ</p><h3 id="demo-title">判断の練習シナリオ</h3></div>
+                  <p>表示値は実測のADC生値ではなく、判定の流れを説明するためのデモ値です。</p>
+                </div>
+                <div class="scenario-list">
+                  <button class="scenario-button" type="button" data-scenario="surfaceDry"><span><strong>表面だけ乾燥</strong><small>表層18%・根元58%</small><em>深さによって値が違うため、判断を保留する場面です。</em></span><i aria-hidden="true">選ぶ</i></button>
+                  <button class="scenario-button" type="button" data-scenario="allDry"><span><strong>全体が乾燥</strong><small>両方低く、重量も減少</small><em>3つの変化が同じ方向を示す場面です。</em></span><i aria-hidden="true">選ぶ</i></button>
+                  <button class="scenario-button" type="button" data-scenario="sensorMismatch"><span><strong>センサー不一致</strong><small>水分値だけが急変</small><em>重量が変わらず、センサー確認を促す場面です。</em></span><i aria-hidden="true">選ぶ</i></button>
+                  <button class="scenario-button scenario-water" type="button" data-scenario="watering"><span><strong>水やり変化</strong><small>水分と鉢重量が上昇</small><em>複数の上昇から水やり後の変化を再現します。</em></span><i aria-hidden="true">選ぶ</i></button>
+                </div>
+                <button class="secondary-button" id="random-demo-button" type="button">ランダムなデモ値を生成</button>
+              </section>
+
+              <div class="demo-workbench">
+                <section class="sensors-panel" aria-labelledby="sensors-title">
+                  <div class="subsection-heading"><div><p class="section-label">デモ入力</p><h3 id="sensors-title">観察値を動かす</h3></div><span class="manual-label">手入力可</span></div>
+                  <p class="demo-value-note">表層・根元の「%」はこの判定デモだけの仮想値です。実測のRAW ADCとは別です。</p>
+                  <div class="sensor-grid">
+                    <article class="sensor-card sensor-moisture">
+                      <div class="sensor-card-head"><span class="sensor-icon icon-surface" aria-hidden="true"></span><div><small>土の表面付近</small><h4>表層水分</h4></div></div>
+                      <div class="sensor-value"><output id="surface-output" for="surface-range surface-number">46</output><span>%</span></div>
+                      <input id="surface-range" data-sensor="surface" type="range" min="0" max="100" step="1" value="46" aria-label="表層水分スライダー">
+                      <label class="compact-input" for="surface-number"><span>数値</span><span><input id="surface-number" data-sensor="surface" type="number" min="0" max="100" step="1" value="46" inputmode="numeric"><i>%</i></span></label>
+                    </article>
+                    <article class="sensor-card sensor-moisture">
+                      <div class="sensor-card-head"><span class="sensor-icon icon-root" aria-hidden="true"></span><div><small>根に近い位置</small><h4>根元水分</h4></div></div>
+                      <div class="sensor-value"><output id="root-output" for="root-range root-number">52</output><span>%</span></div>
+                      <input id="root-range" data-sensor="root" type="range" min="0" max="100" step="1" value="52" aria-label="根元水分スライダー">
+                      <label class="compact-input" for="root-number"><span>数値</span><span><input id="root-number" data-sensor="root" type="number" min="0" max="100" step="1" value="52" inputmode="numeric"><i>%</i></span></label>
+                    </article>
+                    <article class="sensor-card">
+                      <div class="sensor-card-head"><span class="sensor-icon icon-weight" aria-hidden="true"></span><div><small>直近6時間</small><h4>鉢重量変化</h4></div></div>
+                      <label class="large-input" for="weight-input"><input id="weight-input" data-sensor="weightChange" type="number" min="-500" max="500" step="1" value="-8" inputmode="decimal"><span>g</span></label>
+                      <p class="sensor-help">マイナスは軽く、プラスは重くなった目安です。</p>
+                    </article>
+                    <article class="sensor-card compact-card">
+                      <div class="sensor-card-head"><span class="sensor-icon icon-temperature" aria-hidden="true"></span><div><small>室内環境</small><h4>温度</h4></div></div>
+                      <label class="large-input" for="temperature-input"><input id="temperature-input" data-sensor="temperature" type="number" min="0" max="50" step="0.1" value="24.2" inputmode="decimal"><span>℃</span></label>
+                    </article>
+                    <article class="sensor-card compact-card">
+                      <div class="sensor-card-head"><span class="sensor-icon icon-humidity" aria-hidden="true"></span><div><small>室内環境</small><h4>湿度</h4></div></div>
+                      <label class="large-input" for="humidity-input"><input id="humidity-input" data-sensor="humidity" type="number" min="0" max="100" step="1" value="58" inputmode="numeric"><span>%</span></label>
+                    </article>
+                  </div>
+                </section>
+
+                <div class="demo-result-column">
+                  <section class="decision-panel decision-good" id="decision-panel" aria-labelledby="decision-title" aria-live="polite">
+                    <div class="decision-topline"><p class="section-label">現在の状態の目安</p><span class="agreement-badge" id="agreement-badge">センサー一致</span></div>
+                    <div class="decision-main">
+                      <div><h3 id="decision-title">水分あり</h3><p class="decision-summary" id="decision-summary">表層と根元の値が近く、鉢重量にも大きな変化はありません。</p></div>
+                      <div class="certainty-box"><span>判断の確からしさ</span><strong id="certainty-label">高い</strong><div class="certainty-meter" id="certainty-meter" aria-hidden="true"><i></i><i></i><i></i><i></i></div><small>予測精度ではなく、センサー情報の整合性を示す目安です。</small></div>
+                    </div>
+                    <div class="event-notice" id="event-notice" hidden></div>
+                  </section>
+                  <section class="reasons-panel" aria-labelledby="reasons-title">
+                    <p class="section-label">照らし合わせる</p><h3 id="reasons-title">この判断の根拠</h3>
+                    <ol class="reason-list" id="reason-list"></ol>
+                    <p class="accuracy-note">「確からしさ」は複数センサーのそろい具合を表す表示で、植物状態の科学的な予測精度ではありません。</p>
+                  </section>
+                </div>
+              </div>
+
+              <section class="practice-log history-panel" aria-labelledby="history-title">
+                <div class="practice-log-heading">
+                  <div><p class="section-label">デモ専用</p><h3 id="history-title">判断の練習記録</h3></div>
+                  <div class="history-actions"><button class="secondary-button" id="save-button" type="button">現在のデモ状態を記録</button><button class="secondary-button export-button" id="export-button" type="button">デモCSVを書き出す</button><button class="text-button danger-button" id="clear-button" type="button">練習記録をすべて削除</button></div>
+                </div>
+                <p class="data-kind-note"><strong>デモデータ専用</strong>：実測記録とは保存領域もCSV形式も別です。</p>
+                <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+                <div class="history-list" id="history-list"></div>
+                <p class="empty-history" id="empty-history">判断の練習記録はまだありません。</p>
+              </section>
+            </div>
+          </details>
         </section>
 
         <section class="future-note" aria-label="実機接続について">
-          <span>DEMO SENSOR ADAPTER</span>
-          <p>現在はデモデータで動作中です。将来はSerialSensorAdapterへ切り替え、ELEGOO UNO R3がUSBシリアルへ出力した値を受け取る予定です。</p>
+          <strong>現在は手動転記です</strong>
+          <p>判断画面はDemoSensorAdapterで動作します。将来はこれを維持したままSerialSensorAdapterを追加する予定です。</p>
         </section>
       </main>
 
-      <footer><p>Plant AI <span>v0.2.1</span></p><p>判断を代わるのではなく、判断材料を増やす。</p></footer>
+      <footer><p>Plant AI <span>v0.3.0</span></p><p>判断を代わるのではなく、判断材料を増やす。</p></footer>
     </div>
   </body>
 </html>

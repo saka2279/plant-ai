@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const APP_VERSION = "v0.2.1";
+  const APP_VERSION = "v0.3.0";
   const STORAGE_KEY = "plant-ai-digital-twin-v0.1.0";
   const LEGACY_STORAGE_KEY = "plant-ai-measurements-v0.1.0";
   const MAX_HISTORY_ITEMS = 30;
@@ -34,6 +34,17 @@
     emptyHistory: document.querySelector("#empty-history"),
     feedback: document.querySelector("#feedback"),
     measurementForm: document.querySelector("#measurement-form"),
+    serialOutput: document.querySelector("#serial-output-input"),
+    serialParseFeedback: document.querySelector("#serial-parse-feedback"),
+    parsedSummary: document.querySelector("#parsed-summary"),
+    parsedSource: document.querySelector("#parsed-source"),
+    parsedRawAvg: document.querySelector("#parsed-raw-avg"),
+    parsedRawMin: document.querySelector("#parsed-raw-min"),
+    parsedRawMax: document.querySelector("#parsed-raw-max"),
+    measurementSaveButton: document.querySelector("#measurement-save-button"),
+    manualEntryDetails: document.querySelector("#manual-entry-details"),
+    observationOptionsDetails: document.querySelector("#observation-options-details"),
+    memoDetails: document.querySelector("#memo-details"),
     measurementDate: document.querySelector("#measurement-datetime"),
     rawAvg: document.querySelector("#raw-avg-input"),
     rawMin: document.querySelector("#raw-min-input"),
@@ -339,6 +350,190 @@
     feedbackTimer = window.setTimeout(() => { elements.feedback.textContent = ""; }, 4000);
   }
 
+  function parseSerialMeasurementLine(line) {
+    const expectedFields = ["uptime_ms", "raw_avg", "raw_min", "raw_max", "samples"];
+    const values = {};
+
+    String(line ?? "").split(",").forEach((part) => {
+      const separator = part.indexOf("=");
+      if (separator < 0) return;
+      const key = part.slice(0, separator).trim();
+      const value = part.slice(separator + 1).trim();
+      if (expectedFields.includes(key)) values[key] = value;
+    });
+
+    const missing = expectedFields.filter((field) => !Object.prototype.hasOwnProperty.call(values, field) || values[field] === "");
+    if (missing.length > 0) {
+      return { ok: false, message: `不足している項目：${missing.join("、")}` };
+    }
+
+    if (!/^\d+$/.test(values.uptime_ms)) {
+      return { ok: false, message: "uptime_msは0以上の整数で入力してください。" };
+    }
+    if (!/^\d+$/.test(values.samples) || Number(values.samples) < 1) {
+      return { ok: false, message: "samplesは1以上の整数で入力してください。" };
+    }
+
+    const rawPattern = /^\d+(?:\.\d+)?$/;
+    const invalidRawFields = ["raw_avg", "raw_min", "raw_max"].filter((field) => !rawPattern.test(values[field]) || Number(values[field]) < 0 || Number(values[field]) > 1023);
+    if (invalidRawFields.length > 0) {
+      return { ok: false, message: `${invalidRawFields.join("、")}は0〜1023のADC生値で入力してください。` };
+    }
+
+    const rawAvg = Math.round(Number(values.raw_avg) * 10) / 10;
+    const rawMin = Math.round(Number(values.raw_min) * 10) / 10;
+    const rawMax = Math.round(Number(values.raw_max) * 10) / 10;
+    if (rawMin > rawAvg || rawAvg > rawMax) {
+      return { ok: false, message: "値の順序を確認してください。raw_min ≤ raw_avg ≤ raw_maxである必要があります。" };
+    }
+
+    return {
+      ok: true,
+      rawAvg,
+      rawMin,
+      rawMax,
+      uptimeMs: Number(values.uptime_ms),
+      samples: Number(values.samples)
+    };
+  }
+
+  function parseSerialOutput(text) {
+    const lines = String(text ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (lines.length === 0) {
+      return { ok: false, message: "シリアル出力を貼り付けてください。" };
+    }
+
+    const candidates = lines
+      .map((line, index) => ({ line, index }))
+      .filter(({ line }) => line.startsWith("uptime_ms=") || line.includes("raw_avg=") || line.includes("raw_min=") || line.includes("raw_max="));
+
+    if (candidates.length === 0) {
+      return { ok: false, message: "測定行が見つかりません。uptime_ms=で始まる行を貼り付けてください。" };
+    }
+
+    let latestError = null;
+    for (let index = candidates.length - 1; index >= 0; index -= 1) {
+      const candidate = candidates[index];
+      const parsed = parseSerialMeasurementLine(candidate.line);
+      if (parsed.ok) {
+        return { ...parsed, lineNumber: candidate.index + 1, lineCount: lines.length };
+      }
+      if (!latestError) latestError = parsed;
+    }
+    return latestError;
+  }
+
+  function setParseFeedback(message, type = "neutral") {
+    elements.serialParseFeedback.textContent = message;
+    elements.serialParseFeedback.classList.toggle("is-error", type === "error");
+    elements.serialParseFeedback.classList.toggle("is-success", type === "success");
+  }
+
+  function renderMeasurementPreview(result, sourceLabel) {
+    elements.parsedRawAvg.textContent = String(result.rawAvg);
+    elements.parsedRawMin.textContent = String(result.rawMin);
+    elements.parsedRawMax.textContent = String(result.rawMax);
+    elements.parsedSource.textContent = sourceLabel;
+    elements.parsedSummary.classList.add("is-ready");
+    elements.measurementSaveButton.disabled = false;
+  }
+
+  function clearMeasurementPreview(sourceLabel = "測定結果はまだ入力されていません。") {
+    elements.parsedRawAvg.textContent = "—";
+    elements.parsedRawMin.textContent = "—";
+    elements.parsedRawMax.textContent = "—";
+    elements.parsedSource.textContent = sourceLabel;
+    elements.parsedSummary.classList.remove("is-ready");
+    elements.measurementSaveButton.disabled = true;
+  }
+
+  function clearRawInputs() {
+    elements.rawAvg.value = "";
+    elements.rawMin.value = "";
+    elements.rawMax.value = "";
+  }
+
+  function writeRawInputs(result) {
+    elements.rawAvg.value = String(result.rawAvg);
+    elements.rawMin.value = String(result.rawMin);
+    elements.rawMax.value = String(result.rawMax);
+  }
+
+  function readManualRawInputs() {
+    const values = {
+      rawAvg: elements.rawAvg.value,
+      rawMin: elements.rawMin.value,
+      rawMax: elements.rawMax.value
+    };
+    const missing = Object.entries(values).filter(([, value]) => value === "").map(([key]) => ({ rawAvg: "raw_avg", rawMin: "raw_min", rawMax: "raw_max" })[key]);
+    if (missing.length > 0) {
+      return { ok: false, message: `手入力で不足している項目：${missing.join("、")}` };
+    }
+
+    const numbers = { rawAvg: Number(values.rawAvg), rawMin: Number(values.rawMin), rawMax: Number(values.rawMax) };
+    const invalid = Object.entries(numbers).filter(([, value]) => !Number.isFinite(value) || value < 0 || value > 1023).map(([key]) => ({ rawAvg: "raw_avg", rawMin: "raw_min", rawMax: "raw_max" })[key]);
+    if (invalid.length > 0) {
+      return { ok: false, message: `${invalid.join("、")}は0〜1023のADC生値で入力してください。` };
+    }
+    if (numbers.rawMin > numbers.rawAvg || numbers.rawAvg > numbers.rawMax) {
+      return { ok: false, message: "値の順序を確認してください。raw_min ≤ raw_avg ≤ raw_maxである必要があります。" };
+    }
+    return {
+      ok: true,
+      rawAvg: Math.round(numbers.rawAvg * 10) / 10,
+      rawMin: Math.round(numbers.rawMin * 10) / 10,
+      rawMax: Math.round(numbers.rawMax * 10) / 10
+    };
+  }
+
+  function handleSerialOutputInput() {
+    const result = parseSerialOutput(elements.serialOutput.value);
+    if (!result.ok) {
+      clearRawInputs();
+      clearMeasurementPreview("貼り付けた測定行を読み取れませんでした。");
+      setParseFeedback(result.message, elements.serialOutput.value.trim() ? "error" : "neutral");
+      return;
+    }
+
+    writeRawInputs(result);
+    renderMeasurementPreview(result, `貼り付けから読み取りました（samples=${result.samples}）`);
+    setParseFeedback(`${result.lineCount}行中、最新の完全な測定行を読み取りました。`, "success");
+  }
+
+  function handleManualRawInput() {
+    const result = readManualRawInputs();
+    if (!result.ok) {
+      clearMeasurementPreview("手入力の完了を待っています。");
+      setParseFeedback(result.message, "error");
+      return;
+    }
+    renderMeasurementPreview(result, "詳細入力の値を確認しました");
+    setParseFeedback("手入力の3項目を確認しました。", "success");
+  }
+
+  function formatDateTimeLocal(date) {
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
+  }
+
+  function setMeasurementDefaults() {
+    elements.measurementDate.value = formatDateTimeLocal(new Date());
+    elements.watering.value = "unknown";
+    elements.soilFeel.value = "unknown";
+  }
+
+  function resetMeasurementDraft() {
+    elements.measurementForm.reset();
+    elements.serialOutput.value = "";
+    clearRawInputs();
+    setMeasurementDefaults();
+    clearMeasurementPreview();
+    setParseFeedback("測定行を貼り付けると、raw値をここで確認できます。");
+    elements.manualEntryDetails.open = false;
+    elements.observationOptionsDetails.open = false;
+    elements.memoDetails.open = false;
+  }
+
   function createMeasurementRecord() {
     return PlantAIMeasurements.normalizeRecord({
       measuredAt: elements.measurementDate.value,
@@ -369,9 +564,10 @@
     }
 
     measurements = next;
-    elements.measurementForm.reset();
+    const savedSummary = `記録しました。raw_avg ${record.rawAvg} ／ ${formatMeasurementDate(record.measuredAt)}`;
+    resetMeasurementDraft();
     renderMeasurements();
-    showMeasurementFeedback("実測記録を保存しました。デモ履歴とは別に保管されています。");
+    showMeasurementFeedback(savedSummary);
   }
 
   function renderMeasurements() {
@@ -607,6 +803,10 @@
     }, 6000);
   }
 
+  elements.serialOutput.addEventListener("input", handleSerialOutputInput);
+  [elements.rawAvg, elements.rawMin, elements.rawMax].forEach((input) => {
+    input.addEventListener("input", handleManualRawInput);
+  });
   elements.surfaceRange.addEventListener("input", () => {
     elements.surfaceNumber.value = elements.surfaceRange.value;
     elements.surfaceOutput.textContent = elements.surfaceRange.value;
@@ -647,7 +847,8 @@
     getMeasurementCsv: () => PlantAIMeasurements.buildCsv(measurements),
     getMeasurementCount: () => measurements.length,
     getMeasurements: () => measurements.map((record) => ({ ...record })),
-    importMeasurementCsv: importMeasurementCsvText
+    importMeasurementCsv: importMeasurementCsvText,
+    parseSerialOutput
   });
 
   const initial = adapter.getInitialReading();
@@ -655,6 +856,8 @@
   writeInputs(initial.current);
   analyzeAndRender(initial.current, initial.previous);
   setActiveScenarioButton("balanced");
+  setMeasurementDefaults();
+  clearMeasurementPreview();
   renderHistory();
   renderMeasurements();
   if (measurementLoadResult.warnings.length > 0) showMeasurementFeedback(measurementLoadResult.warnings.join(" "), true);
