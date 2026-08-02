@@ -68,4 +68,46 @@ const repeatedNoWater = measurements.mergeRecords([], [records[0], { ...records[
 assert.equal(repeatedNoWater.length, 2);
 assert.equal(repeatedNoWater.every((record) => record.watering === "no"), true);
 
+const updateSource = records.map((record) => ({ ...record }));
+const updateResult = measurements.updateRecord(updateSource, "a", {
+  measuredAt: "2026-07-22T01:00:00.000Z",
+  rawAvg: 480,
+  rawMin: 478,
+  rawMax: 482,
+  watering: "yes",
+  soilFeel: "moist",
+  memo: "編集後"
+});
+assert.ok(updateResult);
+assert.equal(updateResult.record.id, "a");
+assert.equal(updateResult.record.version, records[0].version);
+assert.equal(updateResult.records.length, updateSource.length);
+assert.equal(updateResult.records[0].id, "a");
+assert.deepEqual(updateResult.records.find((record) => record.id === "b"), updateSource.find((record) => record.id === "b"));
+assert.equal(updateResult.records.find((record) => record.id === "a").memo, "編集後");
+assert.equal(updateSource[0].rawAvg, 500.2);
+assert.equal(measurements.updateRecord(updateSource, "missing", { rawAvg: 450, rawMin: 440, rawMax: 460 }), null);
+assert.equal(measurements.updateRecord(updateSource, "a", { rawAvg: 2000, rawMin: 478, rawMax: 482 }), null);
+assert.equal(measurements.updateRecord(updateSource, "a", { rawAvg: 470, rawMin: 471, rawMax: 482 }), null);
+
+const legacyRecord = legacyResult.records[0];
+const legacyUpdate = measurements.updateRecord(legacyResult.records, legacyRecord.id, {
+  measuredAt: "2026-07-23T01:00:00.000Z",
+  rawAvg: 590,
+  rawMin: 588,
+  rawMax: 594
+});
+assert.ok(legacyUpdate);
+assert.equal(legacyUpdate.record.id, legacyRecord.id);
+assert.equal(legacyUpdate.record.version, legacyRecord.version);
+assert.equal(legacyUpdate.records.length, 1);
+
+const newRecord = measurements.normalizeRecord({ id: "new", measuredAt: "2026-07-24T01:00:00.000Z", rawAvg: 450, rawMin: 448, rawMax: 454 });
+const newRegistration = measurements.mergeRecords(updateSource, [newRecord]);
+assert.equal(newRegistration.length, 3);
+assert.equal(newRegistration.some((record) => record.id === "new"), true);
+
+const csvHeader = measurements.buildCsv(updateResult.records).split("\r\n")[0];
+assert.equal(csvHeader, '"ID","測定日時","raw_avg","raw_min","raw_max","水やり","土の感触","メモ","データ種別","記録バージョン"');
+
 console.log("measurement-records: tests passed");

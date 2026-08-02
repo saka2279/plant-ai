@@ -238,6 +238,30 @@
     return sortNewestFirst([...byId.values()]).slice(0, MAX_RECORDS);
   }
 
+  function updateRecord(records, id, changes) {
+    if (!Array.isArray(records) || !changes || typeof changes !== "object") return null;
+    const targetId = String(id ?? "");
+    const targetIndex = records.findIndex((record) => String(record?.id ?? record?.ID ?? "") === targetId);
+    if (targetIndex < 0) return null;
+
+    const current = normalizeRecord(records[targetIndex]);
+    if (!current) return null;
+    const updated = normalizeRecord({
+      ...current,
+      ...changes,
+      id: current.id,
+      source: "actual",
+      version: current.version
+    });
+    if (!updated) return null;
+
+    const next = records.map((record, index) => index === targetIndex ? updated : record);
+    return {
+      record: updated,
+      records: sortNewestFirst(next).slice(0, MAX_RECORDS)
+    };
+  }
+
   global.PlantAIMeasurements = Object.freeze({
     STORAGE_KEY,
     MAX_RECORDS,
@@ -249,6 +273,7 @@
     buildCsv,
     parseCsv,
     mergeRecords,
+    updateRecord,
     sortNewestFirst
   });
 })(globalThis);
