@@ -2,7 +2,7 @@
 
 ## Project
 
-Plant AI v0.3.0は、カポック・デジタルツインのデモを維持しながら、ELEGOO UNO R3で取得した土壌水分センサーのADC生値を記録・可視化する静的Webアプリです。
+Plant AI v0.3.1は、カポック・デジタルツインのデモを維持しながら、ELEGOO UNO R3で取得した土壌水分センサーのADC生値を記録・可視化する静的Webアプリです。
 
 ## Rules
 
@@ -15,7 +15,7 @@ Plant AI v0.3.0は、カポック・デジタルツインのデモを維持し�
 - センサーの型番、対応電圧、ピン名称を確認してから配線する
 - 実測条件と結果は`docs/calibration.md`へ記録する
 - 実測記録の正規化とCSV処理は`measurement-records.js`、画面更新は`script.js`へ分離する
-- v0.3.0ではUNO R3、A0、USBシリアルだけを使用し、BLE、Wi-Fi、Web Serialを追加しない
+- v0.3.1ではUNO R3、A0、USBシリアルだけを使用し、BLE、Wi-Fi、Web Serialを追加しない
 - 現在の実機方針はELEGOO UNO R3とUSBシリアルとし、ESP32-S3を前提にしない
 - 既存機能とlocalStorageデータの互換性を不用意に壊さない
 - 外部AI API、クラウド、カメラ診断、自動給水を追加しない
