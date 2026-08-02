@@ -45,6 +45,10 @@
           </header>
 
           <form class="measurement-form" id="measurement-form">
+            <div class="measurement-edit-status" id="measurement-edit-status" role="status" aria-live="polite" hidden>
+              <strong>実測記録を編集中</strong>
+              <span id="measurement-edit-target"></span>
+            </div>
             <fieldset class="record-stage input-stage">
               <legend><span>1</span>測定結果を入力する</legend>
               <label class="serial-field" for="serial-output-input">
@@ -94,7 +98,7 @@
               </label>
 
               <details class="optional-fields" id="observation-options-details">
-                <summary>水やり・土の感触を変更 <span>現在：未確認</span></summary>
+                <summary>水やり・土の感触を変更 <span id="observation-summary">現在：未確認</span></summary>
                 <div class="observation-fields">
                   <label class="field" for="watering-input">
                     <span>この測定時点までの水やり <b>必須</b></span>
@@ -129,8 +133,11 @@
             </fieldset>
 
             <div class="record-stage save-stage">
-              <div><span class="stage-number">3</span><h2>実測記録として保存する</h2></div>
-              <button class="primary-button" id="measurement-save-button" type="submit" disabled>実測記録を保存</button>
+              <div class="save-stage-heading"><span class="stage-number">3</span><h2 id="measurement-save-title">実測記録として保存する</h2></div>
+              <div class="measurement-save-actions">
+                <button class="primary-button" id="measurement-save-button" type="submit" disabled>実測記録を保存</button>
+                <button class="secondary-button measurement-cancel-button" id="measurement-cancel-button" type="button" hidden>編集をキャンセル</button>
+              </div>
               <p>保存した内容は、この端末のブラウザに最大500件まで残ります。</p>
               <p class="feedback measurement-feedback" id="measurement-feedback" role="status" aria-live="polite"></p>
             </div>

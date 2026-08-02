@@ -197,7 +197,21 @@ h1 {
   font-size: 0.78rem;
 }
 
-.measurement-form { border-top: 1px solid var(--line); }
+.measurement-form { border-top: 1px solid var(--line); scroll-margin-top: 16px; }
+
+.measurement-edit-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-muted);
+  color: var(--ink);
+  font-size: 0.73rem;
+}
+
+.measurement-edit-status strong { font-size: 0.77rem; }
+.measurement-edit-status span { color: var(--ink-soft); font-family: var(--utility-font); font-variant-numeric: tabular-nums; }
 
 .record-stage {
   min-width: 0;
@@ -398,7 +412,7 @@ details > summary::marker { color: var(--ink-soft); }
   border-bottom: 0;
 }
 
-.save-stage > div {
+.save-stage-heading {
   display: flex;
   gap: 9px;
   align-items: center;
@@ -406,6 +420,14 @@ details > summary::marker { color: var(--ink-soft); }
 
 .save-stage h2 { margin: 0; font-size: 0.98rem; }
 .save-stage > p { margin: 0; color: var(--ink-soft); font-size: 0.67rem; }
+
+.measurement-save-actions {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.measurement-cancel-button { color: var(--ink); }
 
 .primary-button,
 .secondary-button {
@@ -568,6 +590,27 @@ details > summary::marker { color: var(--ink-soft); }
 .measurement-meta span { padding-bottom: 1px; border-bottom: 1px solid var(--line); }
 .measurement-meta .watered { border-color: var(--water-mark); color: var(--water-mark); font-weight: 800; }
 .measurement-memo { margin: 0; color: var(--ink-soft); font-size: 0.75rem; white-space: pre-wrap; }
+
+.measurement-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.measurement-edit {
+  min-height: 44px;
+  padding: 7px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.measurement-edit:hover { background: var(--surface-muted); }
 
 .measurement-delete,
 .snapshot-delete,
@@ -784,10 +827,12 @@ summary:focus-visible { outline: 3px solid rgba(181, 91, 50, 0.42); outline-offs
   .parsed-summary dd { margin-top: 3px; }
   .observation-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .save-stage { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-  .save-stage > div,
+  .save-stage-heading,
   .save-stage > p,
   .save-stage .feedback { grid-column: 1; }
-  .save-stage .primary-button { grid-column: 2; grid-row: 1 / span 2; width: auto; min-width: 220px; }
+  .measurement-save-actions { grid-column: 2; grid-row: 1 / span 2; grid-template-columns: repeat(2, auto); }
+  .measurement-save-actions .primary-button { width: auto; min-width: 220px; }
+  .measurement-save-actions .secondary-button { width: auto; }
   .content-section,
   .demo-disclosure { padding: 26px 24px 28px; }
   .section-heading { display: flex; align-items: flex-end; }
@@ -837,9 +882,10 @@ summary:focus-visible { outline: 3px solid rgba(181, 91, 50, 0.42); outline-offs
   .datetime-field { margin-top: 0; }
   .datetime-field small { line-height: 1.2; }
   .save-stage { grid-template-columns: auto minmax(0, 1fr) auto; gap: 5px 14px; padding-top: 9px; padding-bottom: 9px; }
-  .save-stage > div { grid-column: 1; grid-row: 1; }
+  .save-stage-heading { grid-column: 1; grid-row: 1; }
   .save-stage > p { grid-column: 2; grid-row: 1; }
-  .save-stage .primary-button { grid-column: 3; grid-row: 1; min-height: 46px; }
+  .measurement-save-actions { grid-column: 3; grid-row: 1; }
+  .measurement-save-actions .primary-button { min-height: 46px; }
   .save-stage .feedback { grid-column: 1 / -1; }
   .demo-workbench { grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr); gap: 40px; align-items: start; }
   .scenario-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }

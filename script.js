@@ -41,7 +41,11 @@
     parsedRawAvg: document.querySelector("#parsed-raw-avg"),
     parsedRawMin: document.querySelector("#parsed-raw-min"),
     parsedRawMax: document.querySelector("#parsed-raw-max"),
+    measurementEditStatus: document.querySelector("#measurement-edit-status"),
+    measurementEditTarget: document.querySelector("#measurement-edit-target"),
+    measurementSaveTitle: document.querySelector("#measurement-save-title"),
     measurementSaveButton: document.querySelector("#measurement-save-button"),
+    measurementCancelButton: document.querySelector("#measurement-cancel-button"),
     manualEntryDetails: document.querySelector("#manual-entry-details"),
     observationOptionsDetails: document.querySelector("#observation-options-details"),
     memoDetails: document.querySelector("#memo-details"),
@@ -51,6 +55,7 @@
     rawMax: document.querySelector("#raw-max-input"),
     watering: document.querySelector("#watering-input"),
     soilFeel: document.querySelector("#soil-feel-input"),
+    observationSummary: document.querySelector("#observation-summary"),
     measurementMemo: document.querySelector("#measurement-memo"),
     measurementFeedback: document.querySelector("#measurement-feedback"),
     measurementList: document.querySelector("#measurement-list"),
@@ -71,6 +76,7 @@
   let feedbackTimer;
   const measurementLoadResult = PlantAIMeasurements.loadRecords(localStorage);
   let measurements = measurementLoadResult.records;
+  let editingMeasurementId = null;
   let measurementFeedbackTimer;
   let chartResizeFrame;
 
@@ -520,6 +526,39 @@
     elements.measurementDate.value = formatDateTimeLocal(new Date());
     elements.watering.value = "unknown";
     elements.soilFeel.value = "unknown";
+    updateObservationSummary();
+  }
+
+  function updateObservationSummary() {
+    const watering = PlantAIMeasurements.WATERING_LABELS[elements.watering.value] || PlantAIMeasurements.WATERING_LABELS.unknown;
+    const soilFeel = PlantAIMeasurements.SOIL_FEEL_LABELS[elements.soilFeel.value] || PlantAIMeasurements.SOIL_FEEL_LABELS.unknown;
+    elements.observationSummary.textContent = watering === "未確認" && soilFeel === "未確認"
+      ? "現在：未確認"
+      : `現在：水やり ${watering}・土 ${soilFeel}`;
+  }
+
+  function setMeasurementEditMode(record = null) {
+    editingMeasurementId = record?.id || null;
+    elements.measurementEditStatus.hidden = !record;
+    elements.measurementEditTarget.textContent = record
+      ? formatMeasurementEditTarget(record)
+      : "";
+    elements.measurementSaveTitle.textContent = record ? "実測記録の変更を保存する" : "実測記録として保存する";
+    elements.measurementSaveButton.textContent = record ? "変更を保存" : "実測記録を保存";
+    elements.measurementCancelButton.hidden = !record;
+  }
+
+  function formatMeasurementEditTarget(record) {
+    const measuredAt = new Date(record.measuredAt);
+    const editDate = Number.isNaN(measuredAt.getTime())
+      ? "日時不明"
+      : [
+          measuredAt.getFullYear(),
+          String(measuredAt.getMonth() + 1).padStart(2, "0"),
+          String(measuredAt.getDate()).padStart(2, "0"),
+        ].join("/")
+        + ` ${String(measuredAt.getHours()).padStart(2, "0")}:${String(measuredAt.getMinutes()).padStart(2, "0")}`;
+    return `編集中：${editDate}・raw_avg ${record.rawAvg}`;
   }
 
   function resetMeasurementDraft() {
@@ -532,10 +571,11 @@
     elements.manualEntryDetails.open = false;
     elements.observationOptionsDetails.open = false;
     elements.memoDetails.open = false;
+    setMeasurementEditMode();
   }
 
-  function createMeasurementRecord() {
-    return PlantAIMeasurements.normalizeRecord({
+  function readMeasurementDraft() {
+    return {
       measuredAt: elements.measurementDate.value,
       rawAvg: elements.rawAvg.value,
       rawMin: elements.rawMin.value,
@@ -543,28 +583,79 @@
       watering: elements.watering.value,
       soilFeel: elements.soilFeel.value,
       memo: elements.measurementMemo.value,
-      source: "actual",
+      source: "actual"
+    };
+  }
+
+  function createMeasurementRecord() {
+    return PlantAIMeasurements.normalizeRecord({
+      ...readMeasurementDraft(),
       version: APP_VERSION
     });
+  }
+
+  function startMeasurementEdit(id) {
+    const record = measurements.find((measurement) => measurement.id === id);
+    if (!record) {
+      showMeasurementFeedback("編集する実測記録が見つかりませんでした。", true);
+      return;
+    }
+
+    elements.measurementForm.reset();
+    elements.serialOutput.value = "";
+    elements.measurementDate.value = formatDateTimeLocal(new Date(record.measuredAt));
+    writeRawInputs(record);
+    elements.watering.value = record.watering;
+    elements.soilFeel.value = record.soilFeel;
+    updateObservationSummary();
+    elements.measurementMemo.value = record.memo;
+    elements.manualEntryDetails.open = true;
+    elements.observationOptionsDetails.open = true;
+    elements.memoDetails.open = true;
+    renderMeasurementPreview(record, formatMeasurementEditTarget(record));
+    setParseFeedback("raw値を修正し、変更内容を確認してください。", "success");
+    setMeasurementEditMode(record);
+
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    elements.measurementForm.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+    window.requestAnimationFrame(() => elements.rawAvg.focus({ preventScroll: true }));
+  }
+
+  function cancelMeasurementEdit() {
+    if (!editingMeasurementId) return;
+    resetMeasurementDraft();
+    showMeasurementFeedback("編集をキャンセルしました。保存済み記録は変更していません。");
   }
 
   function saveMeasurement(event) {
     event.preventDefault();
     if (!elements.measurementForm.reportValidity()) return;
-    const record = createMeasurementRecord();
-    if (!record) {
+    let record;
+    let next;
+    const wasEditing = Boolean(editingMeasurementId);
+    if (wasEditing) {
+      const updateResult = PlantAIMeasurements.updateRecord(measurements, editingMeasurementId, readMeasurementDraft());
+      if (updateResult) {
+        record = updateResult.record;
+        next = updateResult.records;
+      }
+    } else {
+      record = createMeasurementRecord();
+      if (record) next = PlantAIMeasurements.mergeRecords(measurements, [record]);
+    }
+
+    if (!record || !next) {
       showMeasurementFeedback("入力内容を確認してください。raw_min ≦ raw_avg ≦ raw_maxの順で、各値は0〜1023にしてください。", true);
       return;
     }
 
-    const next = PlantAIMeasurements.mergeRecords(measurements, [record]);
     if (!PlantAIMeasurements.saveRecords(localStorage, next)) {
       showMeasurementFeedback("実測記録を保存できませんでした。ブラウザの保存設定をご確認ください。", true);
       return;
     }
 
     measurements = next;
-    const savedSummary = `記録しました。raw_avg ${record.rawAvg} ／ ${formatMeasurementDate(record.measuredAt)}`;
+    const savedSummary = `${wasEditing ? "変更を保存しました" : "記録しました"}。raw_avg ${record.rawAvg} ／ ${formatMeasurementDate(record.measuredAt)}`;
     resetMeasurementDraft();
     renderMeasurements();
     showMeasurementFeedback(savedSummary);
@@ -613,13 +704,22 @@
         card.append(memo);
       }
 
+      const actions = document.createElement("div");
+      actions.className = "measurement-card-actions";
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "measurement-edit";
+      editButton.textContent = "編集";
+      editButton.setAttribute("aria-label", `${formatMeasurementDate(record.measuredAt)}、raw_avg ${record.rawAvg}の実測記録を編集`);
+      editButton.addEventListener("click", () => startMeasurementEdit(record.id));
       const deleteButton = document.createElement("button");
       deleteButton.type = "button";
       deleteButton.className = "measurement-delete";
       deleteButton.textContent = "この実測記録を削除";
       deleteButton.setAttribute("aria-label", `${formatMeasurementDate(record.measuredAt)}の実測記録を削除`);
       deleteButton.addEventListener("click", () => deleteMeasurement(record.id));
-      card.append(deleteButton);
+      actions.append(editButton, deleteButton);
+      card.append(actions);
       elements.measurementList.append(card);
     });
 
@@ -636,9 +736,11 @@
       showMeasurementFeedback("実測記録を削除できませんでした。", true);
       return;
     }
+    const wasEditing = editingMeasurementId === id;
     measurements = next;
+    if (wasEditing) resetMeasurementDraft();
     renderMeasurements();
-    showMeasurementFeedback("選択した実測記録を削除しました。");
+    showMeasurementFeedback(wasEditing ? "編集中の実測記録を削除し、編集を終了しました。" : "選択した実測記録を削除しました。");
   }
 
   function drawRawChart() {
@@ -832,6 +934,9 @@
   elements.exportButton.addEventListener("click", exportHistoryCsv);
   elements.clearButton.addEventListener("click", clearHistory);
   elements.measurementForm.addEventListener("submit", saveMeasurement);
+  elements.measurementCancelButton.addEventListener("click", cancelMeasurementEdit);
+  elements.watering.addEventListener("change", updateObservationSummary);
+  elements.soilFeel.addEventListener("change", updateObservationSummary);
   elements.measurementExportButton.addEventListener("click", exportMeasurementCsv);
   elements.measurementImportButton.addEventListener("click", () => elements.measurementCsvInput.click());
   elements.measurementCsvInput.addEventListener("change", importMeasurementCsvFile);
