@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const APP_VERSION = "v0.3.1";
+  const APP_VERSION = "v0.3.2";
   const STORAGE_KEY = "plant-ai-digital-twin-v0.1.0";
   const LEGACY_STORAGE_KEY = "plant-ai-measurements-v0.1.0";
   const MAX_HISTORY_ITEMS = 30;
