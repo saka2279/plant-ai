@@ -1,6 +1,22 @@
 # Changelog
 
-このファイルにはPlant AIの主な変更内容を記録します。
+このファイルには土みる帳（旧称Plant AI）の主な変更内容を記録します。
+
+## [0.3.2] - 2026-08-06
+
+土みる帳 v0.3.2では、作品名をPlant AIから土みる帳へ変更し、現在の画面と文書の表記を新しい名称へ統一しました。
+
+### Changed
+
+- 作品名をPlant AIから土みる帳へ変更
+- 副題を「土壌センサーの値と観察を、同じ時刻に残す」へ変更
+- 画面、README.md、応募文書の現在名称と現在バージョンを更新
+
+### Safety
+
+- localStorageのキー、CSVファイル名とCSV列、`PlantAILogic`、`PlantAISensors`、`PlantAIMeasurements`、`PlantAIApp`を維持
+- GitHubリポジトリ名`plant-ai`、GitHub Pages URL、Arduinoスケッチのパスと既存v0.2.0起動表示を維持
+- v0.3.1以前の履歴、旧名称、過去のUIコンセプト「一鉢の観察台帳」を維持
 
 ## [0.3.1] - 2026-08-03
 
