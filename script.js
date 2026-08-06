@@ -293,10 +293,6 @@
     }
   }
 
-  function escapeCsvValue(value) {
-    return `"${String(value ?? "").replace(/"/g, '""')}"`;
-  }
-
   function buildHistoryCsv() {
     const headers = ["ID", "測定日時", "シナリオ", "表層水分(%)", "根元水分(%)", "鉢重量変化(g)", "温度(℃)", "湿度(%)", "状態", "センサー整合性", "確からしさ", "記録バージョン"];
     const rows = history.map((snapshot) => [
@@ -313,7 +309,7 @@
       snapshot.certainty,
       snapshot.version || "v0.1.0"
     ]);
-    return [headers, ...rows].map((row) => row.map(escapeCsvValue).join(",")).join("\r\n");
+    return PlantAIMeasurements.buildMarkedCsv(headers, rows);
   }
 
   function exportHistoryCsv() {
@@ -633,6 +629,10 @@
     let record;
     let next;
     const wasEditing = Boolean(editingMeasurementId);
+    if (!wasEditing && measurements.length >= PlantAIMeasurements.MAX_RECORDS) {
+      showMeasurementFeedback(`保存件数が${PlantAIMeasurements.MAX_RECORDS}件に達しています。CSVを書き出してバックアップし、不要な記録を削除してから保存してください。`, true);
+      return;
+    }
     if (wasEditing) {
       const updateResult = PlantAIMeasurements.updateRecord(measurements, editingMeasurementId, readMeasurementDraft());
       if (updateResult) {
@@ -641,11 +641,19 @@
       }
     } else {
       record = createMeasurementRecord();
-      if (record) next = PlantAIMeasurements.mergeRecords(measurements, [record]);
+      if (record) {
+        const mergePlan = PlantAIMeasurements.planRecordMerge(measurements, [record]);
+        if (mergePlan.canApply) next = mergePlan.records;
+      }
     }
 
     if (!record || !next) {
       showMeasurementFeedback("入力内容を確認してください。raw_min ≦ raw_avg ≦ raw_maxの順で、各値は0〜1023にしてください。", true);
+      return;
+    }
+
+    if (!next.some((candidate) => candidate.id === record.id)) {
+      showMeasurementFeedback("保存対象の実測記録を確認できなかったため、保存しませんでした。", true);
       return;
     }
 
@@ -732,7 +740,10 @@
   function deleteMeasurement(id) {
     const next = measurements.filter((record) => record.id !== id);
     if (next.length === measurements.length) return;
-    if (!PlantAIMeasurements.saveRecords(localStorage, next)) {
+    const saved = measurements.length > PlantAIMeasurements.MAX_RECORDS
+      ? PlantAIMeasurements.saveRecordReduction(localStorage, measurements, next)
+      : PlantAIMeasurements.saveRecords(localStorage, next);
+    if (!saved) {
       showMeasurementFeedback("実測記録を削除できませんでした。", true);
       return;
     }
@@ -860,23 +871,83 @@
     showMeasurementFeedback(`${measurements.length}件の実測記録をCSVへ書き出しました。`);
   }
 
-  function importMeasurementCsvText(text) {
+  function blockMeasurementCsvImportWhileEditing() {
+    if (!editingMeasurementId) return false;
+    elements.measurementCsvInput.value = "";
+    showMeasurementFeedback("実測記録の編集中はCSVを読み込めません。変更を保存するか、編集をキャンセルしてから読み込んでください。", true);
+    return true;
+  }
+
+  function requestMeasurementCsvImport() {
+    elements.measurementCsvInput.value = "";
+    if (blockMeasurementCsvImportWhileEditing()) return;
+    elements.measurementCsvInput.click();
+  }
+
+  function formatMeasurementImportConfirmation(plan, skippedCount) {
+    return [
+      `新規追加: ${plan.addedCount}件`,
+      `既存記録の更新: ${plan.updatedCount}件`,
+      `変更なし: ${plan.unchangedCount}件`,
+      `無効行: ${skippedCount}件`,
+      `適用後: ${plan.totalCount}件`,
+      "",
+      "同じIDの保存済み記録はCSVの内容で更新されます。",
+      "読み込みを実行しますか？"
+    ].join("\n");
+  }
+
+  function importMeasurementCsvText(text, confirmImport = (message) => window.confirm(message)) {
+    if (blockMeasurementCsvImportWhileEditing()) {
+      return { applied: false, blockedByEditing: true };
+    }
     const parsed = PlantAIMeasurements.parseCsv(text);
-    const next = PlantAIMeasurements.mergeRecords(measurements, parsed.records);
-    const addedCount = next.length - measurements.length;
-    if (!PlantAIMeasurements.saveRecords(localStorage, next)) throw new Error("ブラウザへ保存できませんでした。");
-    measurements = next;
+    const plan = PlantAIMeasurements.planRecordMerge(measurements, parsed.records);
+    if (!plan.canApply) {
+      throw new Error(`適用後の合計が${plan.totalCount}件となり、上限${PlantAIMeasurements.MAX_RECORDS}件を${plan.excessCount}件超えます。CSV全体を適用せず、保存済み記録は変更していません。`);
+    }
+
+    const commit = PlantAIMeasurements.commitRecordMergePlan(
+      plan,
+      () => confirmImport(formatMeasurementImportConfirmation(plan, parsed.skippedCount)),
+      (records) => PlantAIMeasurements.saveRecords(localStorage, records)
+    );
+    if (commit.status === "cancelled") {
+      return {
+        applied: false,
+        cancelled: true,
+        addedCount: plan.addedCount,
+        updatedCount: plan.updatedCount,
+        unchangedCount: plan.unchangedCount,
+        skippedCount: parsed.skippedCount,
+        totalCount: plan.totalCount
+      };
+    }
+    if (commit.status !== "applied") throw new Error("ブラウザへ保存できませんでした。");
+    measurements = commit.records;
     renderMeasurements();
-    return { importedCount: parsed.records.length, addedCount, skippedCount: parsed.skippedCount };
+    return {
+      applied: true,
+      addedCount: plan.addedCount,
+      updatedCount: plan.updatedCount,
+      unchangedCount: plan.unchangedCount,
+      skippedCount: parsed.skippedCount,
+      totalCount: plan.totalCount
+    };
   }
 
   async function importMeasurementCsvFile() {
+    if (blockMeasurementCsvImportWhileEditing()) return;
     const file = elements.measurementCsvInput.files?.[0];
     if (!file) return;
     try {
       const result = importMeasurementCsvText(await file.text());
-      const skipped = result.skippedCount ? ` 読み取れない${result.skippedCount}行は除外しました。` : "";
-      showMeasurementFeedback(`${result.importedCount}件を確認し、新しく${result.addedCount}件を読み込みました。${skipped}`.trim());
+      if (result.cancelled) {
+        showMeasurementFeedback("CSV読み込みをキャンセルしました。保存済み記録は変更していません。");
+        return;
+      }
+      const skipped = result.skippedCount ? `・無効行${result.skippedCount}件` : "";
+      showMeasurementFeedback(`CSVを読み込みました。追加${result.addedCount}件・更新${result.updatedCount}件・変更なし${result.unchangedCount}件${skipped}。`);
     } catch (error) {
       showMeasurementFeedback(`CSVを読み込めませんでした。${error.message}`, true);
     } finally {
@@ -938,7 +1009,7 @@
   elements.watering.addEventListener("change", updateObservationSummary);
   elements.soilFeel.addEventListener("change", updateObservationSummary);
   elements.measurementExportButton.addEventListener("click", exportMeasurementCsv);
-  elements.measurementImportButton.addEventListener("click", () => elements.measurementCsvInput.click());
+  elements.measurementImportButton.addEventListener("click", requestMeasurementCsvImport);
   elements.measurementCsvInput.addEventListener("change", importMeasurementCsvFile);
   window.addEventListener("resize", () => {
     window.cancelAnimationFrame(chartResizeFrame);
