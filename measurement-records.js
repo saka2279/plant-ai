@@ -7,8 +7,22 @@
     "plant-ai-calibration-records-v0.2.0"
   ]);
   const MAX_RECORDS = 500;
+  const CSV_FORMAT_MARKER = "# tsuchimirucho-csv-format=2;formula-escape=apostrophe-v1";
+  const CSV_FORMAT_FAMILY_PREFIX = "# tsuchimirucho-csv-format";
   const RAW_MIN = 0;
   const RAW_MAX = 1023;
+  const RECORD_CONTENT_KEYS = Object.freeze([
+    "id",
+    "measuredAt",
+    "rawAvg",
+    "rawMin",
+    "rawMax",
+    "watering",
+    "soilFeel",
+    "memo",
+    "source",
+    "version"
+  ]);
 
   const WATERING_LABELS = Object.freeze({ yes: "あり", no: "なし", unknown: "未確認" });
   const SOIL_FEEL_LABELS = Object.freeze({
@@ -86,7 +100,7 @@
       rawMax,
       watering: normalizeWatering(getFirstValue(item, ["watering", "watered", "水やり"])),
       soilFeel: normalizeSoilFeel(getFirstValue(item, ["soilFeel", "soil_feel", "土の感触"])),
-      memo: String(getFirstValue(item, ["memo", "note", "メモ"]) ?? "").trim().slice(0, 300),
+      memo: String(getFirstValue(item, ["memo", "note", "メモ"]) ?? "").slice(0, 300),
       source: "actual",
       version: String(item.version || item["記録バージョン"] || "v0.2.1")
     };
@@ -99,7 +113,7 @@
   function normalizeCollection(value) {
     const candidates = Array.isArray(value) ? value : (value && Array.isArray(value.records) ? value.records : []);
     const records = candidates.map(normalizeRecord).filter(Boolean);
-    return sortNewestFirst(records).slice(0, MAX_RECORDS);
+    return sortNewestFirst(records);
   }
 
   function loadRecords(storage) {
@@ -117,6 +131,7 @@
         const records = normalizeCollection(parsed);
         const sourceCount = Array.isArray(parsed) ? parsed.length : (Array.isArray(parsed?.records) ? parsed.records.length : 0);
         if (records.length < sourceCount) warnings.push("読み取れない旧形式の実測記録を一部除外しました。");
+        if (records.length > MAX_RECORDS) warnings.push(`保存件数が${MAX_RECORDS}件を超えています。CSVへバックアップし、不要な記録を削除してください。`);
         return { records, warnings };
       } catch (_error) {
         warnings.push(`${key}の保存データを読み取れなかったため除外しました。`);
@@ -125,17 +140,45 @@
     return { records: [], warnings };
   }
 
-  function saveRecords(storage, records) {
+  function persistRecords(storage, records) {
     try {
-      storage.setItem(STORAGE_KEY, JSON.stringify(sortNewestFirst(records).slice(0, MAX_RECORDS)));
+      storage.setItem(STORAGE_KEY, JSON.stringify(sortNewestFirst(records)));
       return true;
     } catch (_error) {
       return false;
     }
   }
 
-  function escapeCsv(value) {
+  function saveRecords(storage, records) {
+    if (!Array.isArray(records) || records.length > MAX_RECORDS) return false;
+    return persistRecords(storage, records);
+  }
+
+  // 表計算ソフトの数式評価を防ぐための文字列エスケープ。CSVの引用符処理とは別に扱う。
+  function protectCsvString(value) {
+    const text = String(value ?? "");
+    if (/^[ \t]*['=+\-@]/.test(text)) return `'${text}`;
+    return text;
+  }
+
+  // 形式マーカーで由来を確認したCSVに限り、protectCsvStringが付加した先頭引用符を戻す。
+  function restoreCsvString(value) {
+    const text = String(value ?? "");
+    if (text.startsWith("'") && /^[ \t]*['=+\-@]/.test(text.slice(1))) return text.slice(1);
+    return text;
+  }
+
+  function quoteCsvValue(value) {
     return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  }
+
+  function escapeCsvCell(value) {
+    return quoteCsvValue(typeof value === "string" ? protectCsvString(value) : value);
+  }
+
+  function buildMarkedCsv(headers, rows) {
+    const body = [headers, ...rows].map((row) => row.map(escapeCsvCell).join(",")).join("\r\n");
+    return `${CSV_FORMAT_MARKER}\r\n${body}`;
   }
 
   function buildCsv(records) {
@@ -152,7 +195,24 @@
       "実測",
       record.version || "v0.2.1"
     ]);
-    return [headers, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\r\n");
+    return buildMarkedCsv(headers, rows);
+  }
+
+  function parseCsvEnvelope(text) {
+    let source = String(text ?? "");
+    if (source.startsWith("\uFEFF")) source = source.slice(1);
+
+    const lineBreak = /\r\n|\n|\r/.exec(source);
+    const firstLine = lineBreak ? source.slice(0, lineBreak.index) : source;
+    const body = lineBreak ? source.slice(lineBreak.index + lineBreak[0].length) : "";
+
+    if (firstLine === CSV_FORMAT_MARKER) {
+      return { body, formulaEscape: "apostrophe-v1", formatVersion: 2 };
+    }
+    if (firstLine.startsWith(CSV_FORMAT_FAMILY_PREFIX)) {
+      throw new Error("この土みる帳CSVの形式または文字列安全化方式には対応していません。CSV全体を読み込みませんでした。");
+    }
+    return { body: source, formulaEscape: null, formatVersion: null };
   }
 
   function parseCsvRows(text) {
@@ -196,7 +256,8 @@
   }
 
   function parseCsv(text) {
-    const rows = parseCsvRows(text);
+    const envelope = parseCsvEnvelope(text);
+    const rows = parseCsvRows(envelope.body);
     if (rows.length < 2) throw new Error("見出しと測定データが必要です。");
     const headers = rows[0].map((value) => value.trim());
     const required = ["測定日時", "raw_avg", "raw_min", "raw_max"];
@@ -206,11 +267,22 @@
 
     const indexOf = (name) => headers.indexOf(name);
     const imported = [];
+    const seenIds = new Set();
+    const duplicateIds = new Set();
     let skippedCount = 0;
     rows.slice(1).forEach((row) => {
-      const valueAt = (name) => indexOf(name) >= 0 ? row[indexOf(name)] : undefined;
+      const valueAt = (name) => {
+        if (indexOf(name) < 0) return undefined;
+        const value = row[indexOf(name)];
+        return envelope.formulaEscape === "apostrophe-v1" ? restoreCsvString(value) : value;
+      };
+      const importedId = valueAt("ID");
+      if (importedId) {
+        if (seenIds.has(importedId)) duplicateIds.add(importedId);
+        seenIds.add(importedId);
+      }
       const record = normalizeRecord({
-        id: valueAt("ID"),
+        id: importedId,
         measuredAt: valueAt("測定日時"),
         raw_avg: valueAt("raw_avg"),
         raw_min: valueAt("raw_min"),
@@ -225,17 +297,114 @@
       else skippedCount += 1;
     });
 
+    if (duplicateIds.size > 0) {
+      throw new Error(`CSV内でID「${[...duplicateIds].join("、")}」が重複しています。CSV全体を読み込みませんでした。`);
+    }
     if (imported.length === 0) throw new Error("読み込める実測記録がありませんでした。");
-    return { records: imported, skippedCount };
+    return { records: imported, skippedCount, formatVersion: envelope.formatVersion };
   }
 
-  function mergeRecords(current, incoming) {
+  function recordsHaveSameContent(first, second) {
+    return RECORD_CONTENT_KEYS.every((key) => first[key] === second[key]);
+  }
+
+  function planRecordReduction(current, candidate) {
+    if (!Array.isArray(current) || !Array.isArray(candidate)) return { canApply: false };
+    if (current.length <= MAX_RECORDS || candidate.length >= current.length) return { canApply: false };
+
+    const currentRecords = current.map(normalizeRecord);
+    const candidateRecords = candidate.map(normalizeRecord);
+    if (currentRecords.some((record) => !record) || candidateRecords.some((record) => !record)) return { canApply: false };
+
+    const currentById = new Map();
+    for (const record of currentRecords) {
+      if (currentById.has(record.id)) return { canApply: false };
+      currentById.set(record.id, record);
+    }
+
+    const candidateIds = new Set();
+    for (const record of candidateRecords) {
+      if (candidateIds.has(record.id)) return { canApply: false };
+      candidateIds.add(record.id);
+      const existing = currentById.get(record.id);
+      if (!existing || !recordsHaveSameContent(existing, record)) return { canApply: false };
+    }
+
+    if (candidateIds.size >= currentById.size) return { canApply: false };
+    return {
+      canApply: true,
+      records: sortNewestFirst(candidateRecords),
+      removedCount: currentById.size - candidateIds.size
+    };
+  }
+
+  function saveRecordReduction(storage, current, candidate) {
+    const plan = planRecordReduction(current, candidate);
+    return plan.canApply && persistRecords(storage, plan.records);
+  }
+
+  function planRecordMerge(current, incoming) {
+    const currentRecords = Array.isArray(current) ? current.map(normalizeRecord).filter(Boolean) : [];
+    const incomingRecords = Array.isArray(incoming) ? incoming.map(normalizeRecord).filter(Boolean) : [];
     const byId = new Map();
-    [...current, ...incoming].forEach((record) => {
-      const normalized = normalizeRecord(record);
-      if (normalized) byId.set(normalized.id, normalized);
+    currentRecords.forEach((record) => byId.set(record.id, record));
+
+    let addedCount = 0;
+    let updatedCount = 0;
+    let unchangedCount = 0;
+    incomingRecords.forEach((record) => {
+      const existing = byId.get(record.id);
+      if (!existing) {
+        addedCount += 1;
+        byId.set(record.id, record);
+        return;
+      }
+      if (recordsHaveSameContent(existing, record)) {
+        unchangedCount += 1;
+        return;
+      }
+      updatedCount += 1;
+      byId.set(record.id, record);
     });
-    return sortNewestFirst([...byId.values()]).slice(0, MAX_RECORDS);
+
+    const records = sortNewestFirst([...byId.values()]);
+    const excessCount = Math.max(0, records.length - MAX_RECORDS);
+    return {
+      records,
+      addedCount,
+      updatedCount,
+      unchangedCount,
+      totalCount: records.length,
+      excessCount,
+      canApply: excessCount === 0
+    };
+  }
+
+  // 既存呼び出し向け。上限を超える場合は切り詰めず、適用不可をnullで返す。
+  function mergeRecords(current, incoming) {
+    const plan = planRecordMerge(current, incoming);
+    return plan.canApply ? plan.records : null;
+  }
+
+  function commitRecordMergePlan(plan, confirm, persist) {
+    if (!plan || !plan.canApply) return { status: "rejected" };
+
+    let confirmed = false;
+    try {
+      confirmed = typeof confirm === "function" && confirm(plan) === true;
+    } catch (_error) {
+      return { status: "confirm-failed" };
+    }
+    if (!confirmed) return { status: "cancelled" };
+
+    let saved = false;
+    try {
+      saved = typeof persist === "function" && persist(plan.records) === true;
+    } catch (_error) {
+      saved = false;
+    }
+    if (!saved) return { status: "save-failed" };
+    return { status: "applied", records: plan.records };
   }
 
   function updateRecord(records, id, changes) {
@@ -258,21 +427,30 @@
     const next = records.map((record, index) => index === targetIndex ? updated : record);
     return {
       record: updated,
-      records: sortNewestFirst(next).slice(0, MAX_RECORDS)
+      records: sortNewestFirst(next)
     };
   }
 
   global.PlantAIMeasurements = Object.freeze({
     STORAGE_KEY,
     MAX_RECORDS,
+    CSV_FORMAT_MARKER,
     WATERING_LABELS,
     SOIL_FEEL_LABELS,
     normalizeRecord,
     loadRecords,
     saveRecords,
+    planRecordReduction,
+    saveRecordReduction,
+    protectCsvString,
+    restoreCsvString,
+    escapeCsvCell,
+    buildMarkedCsv,
     buildCsv,
     parseCsv,
+    planRecordMerge,
     mergeRecords,
+    commitRecordMergePlan,
     updateRecord,
     sortNewestFirst
   });
