@@ -348,9 +348,9 @@ ProtoPedia上で実際に使われているカテゴリー名を候補にして�
 
 ## 20. 公開URL・動画URL・リポジトリURL
 
-- 公開URL：[https://saka1905.github.io/plant-ai/](https://saka1905.github.io/plant-ai/)
+- 公開URL：[https://saka2279.github.io/plant-ai/](https://saka2279.github.io/plant-ai/)
 - 動画URL：**未作成**
-- リポジトリURL：[https://github.com/saka1905/plant-ai](https://github.com/saka1905/plant-ai)
+- リポジトリURL：[https://github.com/saka2279/plant-ai](https://github.com/saka2279/plant-ai)
 - ProtoPedia作品URL：**未作成**
 
 作業開始時点ではPlant AI v0.3.1がGitHub Pagesで公開中です。土みる帳 v0.3.2はリリース候補で、まだ公開済みではありません。公開版とリポジトリは確認できますが、動画とProtoPedia作品ページはまだ作成していません。

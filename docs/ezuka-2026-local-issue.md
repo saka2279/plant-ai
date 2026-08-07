@@ -85,8 +85,8 @@ uptime_ms=11008,raw_avg=410.0,raw_min=409,raw_max=410,samples=20
 
 ## 8. 公開情報
 
-- GitHub Pages: [https://saka1905.github.io/plant-ai/](https://saka1905.github.io/plant-ai/)
-- GitHubリポジトリ: [https://github.com/saka1905/plant-ai](https://github.com/saka1905/plant-ai)
+- GitHub Pages: [https://saka2279.github.io/plant-ai/](https://saka2279.github.io/plant-ai/)
+- GitHubリポジトリ: [https://github.com/saka2279/plant-ai](https://github.com/saka2279/plant-ai)
 
 公開版は、外部API、バックエンド、外部フレームワークを使わない静的Webアプリです。公開されていること自体は、家庭菜園、学校菜園、育苗、小規模栽培での有効性を示すものではありません。
 

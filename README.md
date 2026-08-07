@@ -223,8 +223,8 @@ v0.3.2ではUNO R3と土壌水分センサー1本のUSBシリアル測定と、�
 
 ## 公開URL
 
-- GitHub Pages: [https://saka1905.github.io/plant-ai/](https://saka1905.github.io/plant-ai/)
-- GitHubリポジトリ: [https://github.com/saka1905/plant-ai](https://github.com/saka1905/plant-ai)
+- GitHub Pages: [https://saka2279.github.io/plant-ai/](https://saka2279.github.io/plant-ai/)
+- GitHubリポジトリ: [https://github.com/saka2279/plant-ai](https://github.com/saka2279/plant-ai)
 
 公開版は、すべて相対パスのHTML、CSS、JavaScriptで構成した静的Webアプリです。外部API、バックエンド、外部フレームワークを使用せず、CSV出力とlocalStorageによる保存はブラウザ内で動作します。
 
