@@ -1,4 +1,43 @@
+# OS files
 .DS_Store
 Thumbs.db
+
+# Editor settings
 .vscode/
 .idea/
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+.tmp/
+temp/
+*.tmp
+*.bak
+*~
+
+# Local backups
+backups/
+
+# Build artifacts
+build/
+dist/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.db-journal
